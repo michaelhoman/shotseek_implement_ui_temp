@@ -7,10 +7,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/michaelhoman/ShotSeek/internal/store/postgres"
 )
 
 type application struct {
 	config config
+	store  postgres.Storage
 }
 
 type config struct {
