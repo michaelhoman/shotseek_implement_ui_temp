@@ -1,4 +1,4 @@
-package postgressdb
+package postgres_db
 
 import (
 	"context"
@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-func New(addr string, maxOpenConns int, maxIdleConns int, maxIdleTime string) (*sql.DB, error) {
-
+func New(addr string, maxOpenConns, maxIdleConns int, maxIdleTime string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", addr)
 	if err != nil {
 		return nil, err
@@ -20,7 +19,6 @@ func New(addr string, maxOpenConns int, maxIdleConns int, maxIdleTime string) (*
 	if err != nil {
 		return nil, err
 	}
-
 	db.SetConnMaxIdleTime(duration)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -29,5 +27,6 @@ func New(addr string, maxOpenConns int, maxIdleConns int, maxIdleTime string) (*
 	if err = db.PingContext(ctx); err != nil {
 		return nil, err
 	}
+
 	return db, nil
 }

@@ -23,7 +23,7 @@ type PostgresPostStore struct {
 func (s *PostgresPostStore) Create(ctx context.Context, post *Post) error {
 	query := `
 INSERT INTO posts (content, title, user_id, tags)
-VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at, updated_at
+VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at
 `
 	err := s.db.QueryRowContext(
 		ctx,
