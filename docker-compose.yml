@@ -1,5 +1,4 @@
 # Use postgres/example user/password credentials
-version: "3.9"
 
 services:
   db:
@@ -19,7 +18,9 @@ services:
       POSTGRES_DB: shotseek
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: adminpassword
-      ports: "5432:5432"
+
+    ports:
+      - "5432:5432"
 
   # adminer:
   #   image: adminer

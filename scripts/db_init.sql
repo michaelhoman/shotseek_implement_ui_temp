@@ -1,1 +1,1 @@
-CREATE DATABASE shotseek;
+CREATE DATABASE 'shotseek';
