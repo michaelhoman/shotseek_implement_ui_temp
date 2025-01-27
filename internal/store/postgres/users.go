@@ -8,9 +8,13 @@ import (
 
 type User struct {
 	ID        int64  `json:"id"`
-	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
+	Zipcode   string `json:"zipcode"`
+	City      string `json:"city"`
+	State     string `json:"state"`
 	CreatedAt string `json:"created_at"`
 }
 type PostgresUserStore struct {
@@ -24,9 +28,13 @@ INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, 
 	err := s.db.QueryRowContext(
 		ctx,
 		query,
-		user.Username,
 		user.Email,
 		user.Password,
+		user.FirstName,
+		user.LastName,
+		user.Zipcode,
+		user.City,
+		user.State,
 	).Scan(
 		&user.ID,
 		&user.CreatedAt,
