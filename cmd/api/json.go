@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -12,17 +13,22 @@ func writeJSON(w http.ResponseWriter, status int, data any) error {
 }
 
 func readJSON(w http.ResponseWriter, r *http.Request, data any) error {
-	if err := json.NewDecoder(r.Body).Decode(data); err != nil {
+	// Apply MaxBytesReader to ensure size limit is enforced
+	maxBytes := 1_048_578 // 1MB limit
+	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
+
+	// Create a JSON decoder and apply settings
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields() // Disallow fields not defined in the struct
+
+	// Attempt to decode the JSON body
+	if err := decoder.Decode(data); err != nil {
+		// Handle decoding errors
+		writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("Error decoding JSON: %s", err.Error()))
 		return err
 	}
 
-	maxBytes := 1_048_578
-	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
-
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	return decoder.Decode(data)
+	return nil
 }
 
 func writeJSONError(w http.ResponseWriter, status int, message string) error {

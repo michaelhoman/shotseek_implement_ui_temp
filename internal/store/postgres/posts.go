@@ -1,4 +1,4 @@
-package postgres
+package postgres_store
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type PostgresPostStore struct {
 
 func (s *PostgresPostStore) Create(ctx context.Context, post *Post) error {
 	query := `
-INSERT INTO posts (content, title, user_id, tags)
+INSERT INTO posts (content, title, tags, user_id)
 VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at
 `
 	err := s.db.QueryRowContext(
@@ -31,6 +31,7 @@ VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at
 		post.Content,
 		post.Title,
 		pq.Array(post.Tags),
+		post.UserID,
 	).Scan(
 		&post.ID,
 		&post.CreatedAt,

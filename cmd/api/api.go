@@ -7,12 +7,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 )
 
 type application struct {
 	config config
-	store  postgres.Storage
+	store  store.Storage
 }
 
 type config struct {
@@ -44,6 +44,10 @@ func (app *application) mount() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
+
+		r.Route("/posts", func(r chi.Router) {
+			r.Post("/", app.createPostsHandler)
+		})
 	})
 
 	return r

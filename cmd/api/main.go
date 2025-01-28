@@ -5,7 +5,7 @@ import (
 
 	"github.com/michaelhoman/ShotSeek/internal/env"
 	"github.com/michaelhoman/ShotSeek/internal/postgres_db"
-	"github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	postgres_store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 )
 
 const version = "0.0.1"
@@ -34,7 +34,7 @@ func main() {
 
 	defer db.Close()
 
-	store := postgres.NewPostgresStorage(db)
+	store := postgres_store.NewPostgresStorage(db)
 
 	app := &application{
 		config: cfg,
