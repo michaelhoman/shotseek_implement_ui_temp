@@ -1,4 +1,4 @@
-package postgres_store
+package store
 
 import (
 	"context"
