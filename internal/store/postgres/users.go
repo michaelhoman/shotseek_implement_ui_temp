@@ -12,18 +12,18 @@ type User struct {
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
-	Zipcode   string `json:"zipcode"`
+	Zipcode   string `json:"zip_code"`
 	City      string `json:"city"`
 	State     string `json:"state"`
 	CreatedAt string `json:"created_at"`
 }
-type PostgresUserStore struct {
+type UserStore struct {
 	db *sql.DB
 }
 
-func (s *PostgresUserStore) Create(ctx context.Context, user *User) error {
+func (s *UserStore) Create(ctx context.Context, user *User) error {
 	query := `
-INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, created_at	
+INSERT INTO users ( email, password, first_name, last_name, zip_code, city, state) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at	
 `
 	err := s.db.QueryRowContext(
 		ctx,
