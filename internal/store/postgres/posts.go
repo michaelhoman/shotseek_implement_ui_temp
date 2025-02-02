@@ -64,9 +64,16 @@ func (s *PostStore) DeleteByID(ctx context.Context, postID int64) error {
 	DELETE FROM posts
 	WHERE id = $1
 	`
-	_, err := s.db.ExecContext(ctx, query, postID)
+	result, err := s.db.ExecContext(ctx, query, postID)
 	if err != nil {
 		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
 	}
 	return nil
 }
@@ -105,37 +112,16 @@ func (s *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 	return &post, nil
 }
 
-func (s *PostStore) UpdateByID(ctx context.Context, post Post) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-
+func (s *PostStore) Update(ctx context.Context, post *Post) error {
 	query := `
-UPDATE posts
-SET title = $1, content = $2, tags = $3
-WHERE id = $4
-RETURNING updated_at
-`
+	UPDATE posts
+	SET title = $1, content = $2, tags = $3
+	WHERE id = $4
+	RETURNING updated_at
+	`
 
-	if post.Tags == nil {
-		post.Tags = []string{}
-	}
-	err = tx.QueryRowContext(
-		ctx,
-		query,
-		post.Title,
-		post.Content,
-		pq.Array(&post.Tags),
-		post.ID,
-	).Scan(
-		&post.UpdatedAt,
-	)
+	_, err := s.db.ExecContext(ctx, query, post.Title, post.Content, pq.Array(post.Tags), post.ID)
 	if err != nil {
-		tx.Rollback()
-		return err
-	}
-	if err := tx.Commit(); err != nil {
 		return err
 	}
 	return nil

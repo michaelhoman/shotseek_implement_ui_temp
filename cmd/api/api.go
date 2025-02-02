@@ -46,18 +46,26 @@ func (app *application) mount() http.Handler {
 		r.Get("/health", app.healthCheckHandler)
 
 		r.Route("/posts", func(r chi.Router) {
+
 			r.Post("/", app.createPostsHandler)
-			r.Get("/{postID}", app.getPostHandler)
+
+			// Comments
 			r.Post("/{postID}/comments", app.createCommentHandler)
 
-			r.Patch("/{postID}", app.updatePostHandler)
-			r.Delete("/{postID}", app.deletePostHandler)
+			r.Route("/{postID}", func(r chi.Router) {
+				r.Use(app.postsContextMiddleware)
+				r.Get("/", app.getPostHandler)
+				r.Get("/", app.getPostHandler)
+				r.Patch("/", app.updatePostHandler)
+				r.Delete("/", app.deletePostHandler)
+
+			})
 		})
+
 		r.Route("/users", func(r chi.Router) {
-
 			r.Post("/", app.createUserHandler)
-
 		})
+
 	})
 
 	return r

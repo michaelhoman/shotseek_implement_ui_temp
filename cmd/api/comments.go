@@ -8,9 +8,9 @@ import (
 	store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 )
 
-type commentKey string
+// type commentKey string
 
-const commentCtx commentKey = "comment"
+// const commentCtx commentKey = "comment"
 
 type CreateCommentPayload struct {
 	Content string `json:"content" validate:"required,max=1000"`
@@ -49,9 +49,12 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.WriteHeader(http.StatusCreated)
+
 }
 
-func (app *application) deleteCommentByPostHandler(w http.ResponseWriter, r *http.Request) {
+// deleteCommentByPostHandler deletes comments by post ID
+func (app *application) DeleteByPostID(w http.ResponseWriter, r *http.Request) {
+
 	postID, err := strconv.ParseInt(chi.URLParam(r, "postID"), 10, 64)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
