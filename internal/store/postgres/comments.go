@@ -28,6 +28,9 @@ func (s *CommentsStore) Create(ctx context.Context, comment *Comment) error {
 INSERT INTO comments (post_id, user_id, content)
 VALUES ($1, $2, $3) RETURNING id, created_at, updated_at
 `
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
 	err = tx.QueryRowContext(
 		ctx,
 		query,
@@ -58,6 +61,10 @@ func (s *CommentsStore) GetByPostID(ctx context.Context, postID int64) ([]Commen
 	WHERE c.post_id = $1
 	ORDER BY c.created_at DESC;
 	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
 	rows, err := s.db.QueryContext(ctx, query, postID)
 	if err != nil {
 		return nil, err

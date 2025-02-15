@@ -35,15 +35,6 @@ func (app *application) createPostsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Step 2: Reset the body so readJSON can decode it
-	// r.Body = io.NopCloser(bytes.NewReader(body))
-
-	// Step 3: Decode the JSON into the payload
-	// if err := readJSON(w, r, &payload); err != nil {
-	// 	app.badRequestResponse(w, r, err)
-	// 	return
-	// }
-
 	post := store.Post{
 		Title:   payload.Title,
 		Content: payload.Content,
@@ -60,7 +51,7 @@ func (app *application) createPostsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := writeJSON(w, http.StatusCreated, post); err != nil {
+	if err := app.jsonResponse(w, http.StatusCreated, post); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -79,7 +70,7 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	post.Comments = comments
 
-	if err := writeJSON(w, http.StatusOK, post); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
@@ -87,8 +78,10 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdatePostPayload struct {
-	Title   *string `json:"title" validate:"omitempty,max=100"`
-	Content *string `json:"content" validate:"omitempty,max=1000"`
+	Title   *string   `json:"title" validate:"omitempty,max=100"`
+	Content *string   `json:"content" validate:"omitempty,max=1000"`
+	Tags    *[]string `json:"tags" validate:"omitempty,max=100"`
+	// Version int       `json:"version" validate:"required"`
 }
 
 func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +111,7 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 		app.internalServerError(w, r, err)
 	}
 
-	if err := writeJSON(w, http.StatusOK, post); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }
