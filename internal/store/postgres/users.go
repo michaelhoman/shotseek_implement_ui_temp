@@ -90,3 +90,37 @@ WHERE id = $1
 	}
 	return &user, nil
 }
+
+func (s *UserStore) Update(ctx context.Context, user *User) error {
+	query := `
+UPDATE users
+SET email = $1, password = $2, first_name = $3, last_name = $4, zip_code = $5, city = $6, state = $7, version = version + 1, updated_at = NOW()
+WHERE id = $8 AND version = $9
+RETURNING version
+`
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	err := s.db.QueryRowContext(
+		ctx,
+		query,
+		user.Email,
+		user.Password,
+		user.FirstName,
+		user.LastName,
+		user.Zipcode,
+		user.City,
+		user.State,
+		user.ID,
+		user.Version,
+	).Scan(&user.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrNotFound
+		default:
+			return err
+		}
+	}
+	return nil
+}
