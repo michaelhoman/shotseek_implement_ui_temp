@@ -109,8 +109,6 @@ func (s *PostStore) GetByID(ctx context.Context, postID int64) (*Post, error) {
 		&post.UpdatedAt,
 	)
 
-	log.Printf("Error executing query: %v", err)
-
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
