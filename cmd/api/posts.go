@@ -8,7 +8,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	"github.com/michaelhoman/ShotSeek/internal/store"
 )
 
 type postKey string
@@ -21,6 +22,20 @@ type CreatePostPayload struct {
 	Tags    []string `json:"tags" validate:"max=100"`
 }
 
+// CreatePost godoc
+//
+//	@Summary		Creates a post
+//	@Description	Creates a new post from payload
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		CreatePostPayload	true	"Post payload"
+//	@Success		200		{object}	store.Post
+//	@Failure		400		{object}	error
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/posts [post]
 func (app *application) createPostsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Create post handler")
 
@@ -57,6 +72,20 @@ func (app *application) createPostsHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// GetPost godoc
+//
+//	@Summary		Fetches a post
+//	@Description	Fetches a post by ID
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Post ID"
+//	@Success		200	{object}	store.Post
+//	@Failure		400	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/posts/{id} [get]
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 	post := getPostFromCtx(r)
 	// ctx := r.Context()
@@ -84,6 +113,21 @@ type UpdatePostPayload struct {
 	// Version int       `json:"version" validate:"required"`
 }
 
+// UpdatePost godoc
+//
+//	@Summary		Updates a post
+//	@Description	Updates an existing post from payload
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Post ID"
+//	@Param			payload	body		UpdatePostPayload	true	"Post payload"
+//	@Success		200		{object}	store.Post
+//	@Failure		400		{object}	error
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/posts/{id} [patch]
 func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
 	post := getPostFromCtx(r)
 
@@ -104,6 +148,9 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 	if payload.Title != nil {
 		post.Title = *payload.Title
 	}
+	if payload.Tags != nil {
+		post.Tags = *payload.Tags
+	}
 
 	ctx := r.Context()
 
@@ -116,6 +163,20 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// DeletePost godoc
+//
+//	@Summary		Deletes a post
+//	@Description	Deletes a post by ID
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Post ID"
+//	@Success		204	{object}	nil
+//	@Failure		400	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/posts/{id} [delete]
 func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
 	postIDStr := chi.URLParam(r, "postID")
 	postID, err := strconv.ParseInt(postIDStr, 10, 64)
@@ -128,7 +189,7 @@ func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request
 		app.internalServerError(w, r, err)
 		return
 	}
-	if err := app.store.Posts.DeleteByID(ctx, postID); err != nil {
+	if err := app.store.Posts.Delete(ctx, postID); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}

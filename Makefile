@@ -12,3 +12,7 @@ migrate-create:
 #goose create create_users sql -s -table "users" 
 
 #direnv allow .
+
+
+gen-docs:
+	swag init -g ./api/main.go -d cmd,internal/store --parseDependency && swag fmt

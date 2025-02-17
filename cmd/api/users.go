@@ -7,12 +7,14 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+
+	"github.com/michaelhoman/ShotSeek/internal/store"
 )
 
 type userKey string
 
-const userCtx postKey = "user"
+const userCtx userKey = "user"
 
 type CreateUserPayload struct {
 	Email     string `json:"email" validate:"required,email"`
@@ -24,6 +26,20 @@ type CreateUserPayload struct {
 	State     string `json:"state" validate:"required"`
 }
 
+// CreateUser godoc
+//
+//	@Summary		Creates a user
+//	@Description	Creates a new user from payload
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			payload	body		CreateUserPayload	true	"User payload"
+//	@Success		200		{object}	store.User
+//	@Failure		400		{object}	error
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users [post]
 func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	var payload CreateUserPayload
@@ -73,9 +89,22 @@ type UpdateUserPayload struct {
 	State     *string `json:"state" validate:"omitempty"`
 }
 
+// GetUser godoc
+//
+//	@Summary		Fetches a user
+//	@Description	Fetches a user by ID
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"User ID"
+//	@Success		200	{object}	store.User
+//	@Failure		400	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/{id} [get]
 func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromCtx(r)
-	// ctx := r.Context()
 
 	if err := app.jsonResponse(w, http.StatusOK, user); err != nil {
 		app.internalServerError(w, r, err)
@@ -83,6 +112,21 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// UpdateUser godoc
+//
+//	@Summary		Updates a user
+//	@Description	Updates a user by ID
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"User ID"
+//	@Param			payload	body		UpdateUserPayload	true	"User payload"
+//	@Success		200		{object}	store.User
+//	@Failure		400		{object}	error
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/{id} [patch]
 func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromCtx(r)
 
@@ -132,6 +176,32 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// DeleteUser godoc
+//
+//	@Summary		Deletes a user
+//	@Description	Deletes a user by ID
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"User ID"
+//	@Success		204	{object}	nil
+//	@Failure		400	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/{id} [delete]
+func (app *application) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromCtx(r)
+
+	ctx := r.Context()
+
+	usersStore := app.store.Users
+	if err := usersStore.Delete(ctx, user.ID); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		idParam := chi.URLParam(r, "userID")
@@ -161,6 +231,6 @@ func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 }
 
 func getUserFromCtx(r *http.Request) *store.User {
-	post, _ := r.Context().Value(userCtx).(*store.User)
-	return post
+	user, _ := r.Context().Value(userCtx).(*store.User)
+	return user
 }

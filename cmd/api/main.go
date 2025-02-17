@@ -5,14 +5,34 @@ import (
 
 	"github.com/michaelhoman/ShotSeek/internal/env"
 	"github.com/michaelhoman/ShotSeek/internal/postgres_db"
-	postgres_store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+
+	// postgres_store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	"github.com/michaelhoman/ShotSeek/internal/store"
 )
 
 const version = "0.0.1"
 
+//	@title			ShotSeek API
+//	@description	This is the API for ShotSeek Cinematographer Finder
+//	@termsOfService	http://swagger.io/terms/
+
+//	@contact.name	API Support
+//	@contact.url	https://www.hintproductions.com
+//	@contact.email	homanstudio@proton.me
+
+//	@license.name	Apache 2.0
+//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+
+//	@BasePath					/v1
+//	@securityDefinitions.apikey	ApiKeyAuth
+//	@in							header
+//	@name						Authorization
+//	@description
+
 func main() {
 	cfg := config{
-		addr: env.GetString("ADDR", ":8080"),
+		addr:   env.GetString("ADDR", ":8080"),
+		apiURL: env.GetString("EXTERNAL_URL", "localhost:8080"),
 		db: dbConfig{
 			addr:         env.GetString("DB_ADDR", "postgres://admin:adminpassword@localhost:5432/shotseek?sslmode=disable"),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
@@ -34,7 +54,7 @@ func main() {
 
 	defer db.Close()
 
-	store := postgres_store.NewPostgresStorage(db)
+	store := store.NewPostgresStorage(db)
 
 	app := &application{
 		config: cfg,

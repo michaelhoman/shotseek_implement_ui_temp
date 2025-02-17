@@ -3,7 +3,8 @@ package main
 import (
 	"net/http"
 
-	postgres_store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	//postgres_store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	"github.com/michaelhoman/ShotSeek/internal/store"
 )
 
 func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -18,6 +19,6 @@ func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Reques
 		app.internalServerError(w, r, err)
 	}
 
-	app.store.Posts.Create(r.Context(), &postgres_store.Post{})
+	app.store.Posts.Create(r.Context(), &store.Post{})
 
 }

@@ -1,13 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+
+	"github.com/michaelhoman/ShotSeek/docs" // This is required to run Swagger Docs
+	"github.com/michaelhoman/ShotSeek/internal/store"
+
+	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
+	httpSwagger "github.com/swaggo/http-swagger" // http-swagger middleware
 )
 
 type application struct {
@@ -16,9 +22,10 @@ type application struct {
 }
 
 type config struct {
-	addr string
-	db   dbConfig
-	env  string
+	addr   string
+	db     dbConfig
+	env    string
+	apiURL string
 }
 
 type dbConfig struct {
@@ -45,15 +52,24 @@ func (app *application) mount() http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
 
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		r.Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL(docsURL), //The url pointing to API definition
+		))
 		r.Route("/posts", func(r chi.Router) {
-
 			r.Post("/", app.createPostsHandler)
 
 			// Comments
-			r.Post("/{postID}/comments", app.createCommentHandler)
+			r.Route("/comments/{commentID}", func(r chi.Router) {
+				r.Use(app.commentsContextMiddleware)
+				r.Get("/", app.getCommentHandler)
+				r.Patch("/", app.updateCommentHandler)
+				r.Delete("/", app.DeleteByCommentIDHandler)
+			})
 
 			r.Route("/{postID}", func(r chi.Router) {
 				r.Use(app.postsContextMiddleware)
+				r.Post("/comments", app.createCommentHandler)
 				r.Get("/", app.getPostHandler)
 				r.Get("/", app.getPostHandler)
 				r.Patch("/", app.updatePostHandler)
@@ -68,6 +84,7 @@ func (app *application) mount() http.Handler {
 				r.Use(app.usersContextMiddleware)
 				r.Get("/", app.getUserHandler)
 				r.Patch("/", app.updateUserHandler)
+				r.Delete("/", app.deleteUserHandler)
 			})
 		})
 
@@ -77,6 +94,10 @@ func (app *application) mount() http.Handler {
 }
 
 func (app *application) run(mux http.Handler) error {
+	//docs
+	docs.SwaggerInfo.Version = version
+	docs.SwaggerInfo.Host = app.config.apiURL
+	docs.SwaggerInfo.BasePath = "/v1"
 
 	srv := &http.Server{
 		Addr:         app.config.addr,
