@@ -104,6 +104,8 @@ func (app *application) mount() http.Handler {
 
 	})
 
+	r.Mount("/", app.uiRoutes()) // Call the function and pass its return value
+
 	return r
 }
 

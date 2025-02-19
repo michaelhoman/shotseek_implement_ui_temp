@@ -53,3 +53,21 @@ func (app *application) jsonResponse(w http.ResponseWriter, status int, data any
 	}
 	return writeJSON(w, status, &envelope{Data: data})
 }
+func (app *application) writeStringJSON(w http.ResponseWriter, status int, message string) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	// Send the message as raw text inside a JSON structure
+	jsonResponse := fmt.Sprintf("{\"message\":\"%s\"}", message)
+
+	_, err := w.Write([]byte(jsonResponse))
+	return err
+}
+
+func (app *application) writeMessagePlain(w http.ResponseWriter, status int, message string) error {
+	w.Header().Set("Content-Type", "text/plain") // Change to text/html if needed
+	w.WriteHeader(status)
+
+	_, err := w.Write([]byte(message))
+	return err
+}

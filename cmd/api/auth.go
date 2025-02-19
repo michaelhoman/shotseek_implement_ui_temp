@@ -20,6 +20,11 @@ type RegisterUserPayload struct {
 	State     string `json:"state" validate:"required,max=255"`
 }
 
+type userWithToken struct {
+	*store.User
+	Token string `json:"token"`
+}
+
 // registerUserHandler godoc
 //
 //	@Summary		Registers a new user
@@ -68,7 +73,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 	ctx := r.Context()
 	plainToken := uuid.New().String()
-	fmt.Println(user.FirstName, user.LastName, " plainToken:", plainToken)
+	// fmt.Println(user.FirstName, user.LastName, " plainToken:", plainToken)
 	// store plainToken in the database as hashed token
 
 	hash := sha256.Sum256([]byte(plainToken))
@@ -87,7 +92,23 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusCreated, nil); err != nil {
+	// TODO revert the userWithToken after Dev/TESTING - this is insecure and bypasses the email verification
+	// userWithToken := &userWithToken{
+	// 	User:  user,
+	// 	Token: plainToken,
+	// }
+	// if err := app.jsonResponse(w, http.StatusCreated, userWithToken); err != nil {
+	// 	app.internalServerError(w, r, err)
+	// }
+	// Example: Sending success message response
+	// response := map[string]string{
+	// 	"message": "Registration successful! Check your email to verify your account.",
+	// }
+	confirmationMessage := "Registration successful! Check your email to verify your account."
+
+	fmt.Println(user.FirstName, user.LastName, " plainToken:", plainToken)
+	// Return a success message instead of the form
+	if err := app.writeMessagePlain(w, http.StatusCreated, confirmationMessage); err != nil {
 		app.internalServerError(w, r, err)
 	}
 
