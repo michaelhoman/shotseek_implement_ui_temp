@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrNotFound          = errors.New("record not found")
+	ErrNotFound          = errors.New("resource not found")
+	ErrConflict          = errors.New("resource already exists")
 	QueryTimeoutDuration = 5 * time.Second
 )
 
@@ -20,10 +21,13 @@ type Storage struct {
 		Delete(context.Context, int64) error
 	}
 	Users interface {
-		Create(context.Context, *User) error
+		// create(context.Context, *sql.Tx, *User) error
+		Activate(context.Context, string) error
 		GetByID(context.Context, int64) (*User, error)
+		Create(context.Context, *sql.Tx, *User) error
 		Update(context.Context, *User) error
 		Delete(context.Context, int64) error
+		CreateAndInvite(context.Context, *User, string, time.Duration) error
 	}
 	Comments interface {
 		Create(context.Context, *Comment) error
@@ -41,4 +45,18 @@ func NewPostgresStorage(db *sql.DB) Storage {
 		Users:    &UserStore{db},
 		Comments: &CommentsStore{db},
 	}
+}
+
+func withTx(db *sql.DB, ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+
 }

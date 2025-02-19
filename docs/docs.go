@@ -24,6 +24,48 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/authentication/register": {
+            "post": {
+                "description": "Registers a new user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Registers a new user",
+                "parameters": [
+                    {
+                        "description": "User credentials",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.RegisterUserPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "User Registered",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_michaelhoman_ShotSeek_internal_store.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/posts": {
             "post": {
                 "security": [
@@ -431,14 +473,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/users": {
-            "post": {
+        "/users/activate/{token}": {
+            "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Creates a new user from payload",
+                "description": "Activates a user by invitation token",
                 "consumes": [
                     "application/json"
                 ],
@@ -448,23 +490,21 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Creates a user",
+                "summary": "Activates a user",
                 "parameters": [
                     {
-                        "description": "User payload",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateUserPayload"
-                        }
+                        "type": "string",
+                        "description": "Invitation token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "204": {
+                        "description": "User activated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_michaelhoman_ShotSeek_internal_store.User"
+                            "type": "string"
                         }
                     },
                     "400": {
@@ -661,7 +701,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.CreateUserPayload": {
+        "api.RegisterUserPayload": {
             "type": "object",
             "required": [
                 "city",
@@ -674,26 +714,32 @@ const docTemplate = `{
             ],
             "properties": {
                 "city": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "email": {
                     "type": "string"
                 },
                 "first_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "last_name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 6
+                    "maxLength": 72,
+                    "minLength": 8
                 },
                 "state": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "zip_code": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 12
                 }
             }
         },
@@ -727,14 +773,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "first_name": {
+                    "description": "Password  *string ` + "`" + `json:\"password\" validate:\"omitempty,min=6\"` + "`" + `",
                     "type": "string"
                 },
                 "last_name": {
                     "type": "string"
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 6
                 },
                 "state": {
                     "type": "string"
@@ -826,10 +869,10 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "last_name": {
-                    "type": "string"
+                "is_active": {
+                    "type": "boolean"
                 },
-                "password": {
+                "last_name": {
                     "type": "string"
                 },
                 "state": {

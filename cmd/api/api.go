@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 
 	"github.com/michaelhoman/ShotSeek/docs" // This is required to run Swagger Docs
 	"github.com/michaelhoman/ShotSeek/internal/store"
@@ -19,6 +19,7 @@ import (
 type application struct {
 	config config
 	store  store.Storage
+	logger *zap.SugaredLogger
 }
 
 type config struct {
@@ -26,6 +27,11 @@ type config struct {
 	db     dbConfig
 	env    string
 	apiURL string
+	mail   mailConfig
+}
+
+type mailConfig struct {
+	exp time.Duration
 }
 
 type dbConfig struct {
@@ -79,13 +85,21 @@ func (app *application) mount() http.Handler {
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			r.Post("/", app.createUserHandler)
+			// r.Post("/", app.createUserHandler)
+			r.Put("/activate/{token}", app.activateUserHandler)
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.usersContextMiddleware)
 				r.Get("/", app.getUserHandler)
 				r.Patch("/", app.updateUserHandler)
 				r.Delete("/", app.deleteUserHandler)
 			})
+		})
+
+		//public
+		r.Route("/authentication", func(r chi.Router) {
+			r.Post("/register", app.registerUserHandler)
+			//r.Post("/login", app.loginHandler)
+			//r.Post("/logout", app.logoutHandler)
 		})
 
 	})
@@ -106,6 +120,6 @@ func (app *application) run(mux http.Handler) error {
 		ReadTimeout:  time.Second * 10,
 		IdleTimeout:  time.Minute,
 	}
-	log.Printf("Server has started at %s", app.config.addr)
+	app.logger.Info("Server has started at ", "ADDR", app.config.addr, "ENV", app.config.env)
 	return srv.ListenAndServe()
 }

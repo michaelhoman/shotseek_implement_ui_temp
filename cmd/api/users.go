@@ -17,8 +17,8 @@ type userKey string
 const userCtx userKey = "user"
 
 type CreateUserPayload struct {
-	Email     string `json:"email" validate:"required,email"`
-	Password  string `json:"password" validate:"required,min=6"`
+	Email string `json:"email" validate:"required,email"`
+	// Password  string `json:"password" validate:"required,min=6"`
 	FirstName string `json:"first_name" validate:"required"`
 	LastName  string `json:"last_name" validate:"required"`
 	Zipcode   string `json:"zip_code" validate:"required"`
@@ -40,48 +40,48 @@ type CreateUserPayload struct {
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users [post]
-func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
+// func (app *application) createUserHandler(w http.ResponseWriter, r *http.Request) {
 
-	var payload CreateUserPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
+// 	var payload CreateUserPayload
+// 	if err := readJSON(w, r, &payload); err != nil {
+// 		app.badRequestResponse(w, r, err)
+// 		return
+// 	}
 
-	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
+// 	if err := Validate.Struct(payload); err != nil {
+// 		app.badRequestResponse(w, r, err)
+// 		return
+// 	}
 
-	user := store.User{
-		Email:     payload.Email,
-		Password:  payload.Password,
-		FirstName: payload.FirstName,
-		LastName:  payload.LastName,
-		Zipcode:   payload.Zipcode,
-		City:      payload.City,
-		State:     payload.State,
-	}
+// 	user := store.User{
+// 		Email: payload.Email,
+// 		// Password:  payload.Password,
+// 		FirstName: payload.FirstName,
+// 		LastName:  payload.LastName,
+// 		Zipcode:   payload.Zipcode,
+// 		City:      payload.City,
+// 		State:     payload.State,
+// 	}
 
-	ctx := r.Context()
+// 	ctx := r.Context()
 
-	usersStore := app.store.Users
-	if err := usersStore.Create(ctx, &user); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+// 	usersStore := app.store.Users
+// 	if err := usersStore.Create(ctx, &user); err != nil {
+// 		app.internalServerError(w, r, err)
+// 		return
+// 	}
 
-	// w.WriteHeader(http.StatusCreated)
+// 	// w.WriteHeader(http.StatusCreated)
 
-	if err := app.jsonResponse(w, http.StatusCreated, user); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-}
+// 	if err := app.jsonResponse(w, http.StatusCreated, user); err != nil {
+// 		app.internalServerError(w, r, err)
+// 		return
+// 	}
+// }
 
 type UpdateUserPayload struct {
-	Email     *string `json:"email" validate:"omitempty,email"`
-	Password  *string `json:"password" validate:"omitempty,min=6"`
+	Email *string `json:"email" validate:"omitempty,email"`
+	// Password  *string `json:"password" validate:"omitempty,min=6"`
 	FirstName *string `json:"first_name" validate:"omitempty"`
 	LastName  *string `json:"last_name" validate:"omitempty"`
 	Zipcode   *string `json:"zip_code" validate:"omitempty"`
@@ -144,9 +144,9 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	if payload.Email != nil {
 		user.Email = *payload.Email
 	}
-	if payload.Password != nil {
-		user.Password = *payload.Password
-	}
+	// if payload.Password != nil {
+	// user.Password = *payload.Password
+	// }
 
 	if payload.FirstName != nil {
 		user.FirstName = *payload.FirstName
@@ -197,6 +197,41 @@ func (app *application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 	if err := usersStore.Delete(ctx, user.ID); err != nil {
 		app.internalServerError(w, r, err)
 		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ActivateUser godoc
+//
+//	@Summary		Activates a user
+//	@Description	Activates a user by invitation token
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			token	query		string	true	"Invitation token"
+//	@Success		204		{string}	string	"User activated"
+//	@Failure		400		{object}	error
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/activate/{token} [put]
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+
+	err := app.store.Users.Activate(r.Context(), token)
+	if err != nil {
+		switch err {
+		case store.ErrNotFound:
+			app.badRequestResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusNoContent, "User activated"); err != nil {
+		app.internalServerError(w, r, err)
 	}
 
 	w.WriteHeader(http.StatusNoContent)

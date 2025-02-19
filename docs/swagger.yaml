@@ -25,22 +25,28 @@ definitions:
     - content
     - title
     type: object
-  api.CreateUserPayload:
+  api.RegisterUserPayload:
     properties:
       city:
+        maxLength: 255
         type: string
       email:
         type: string
       first_name:
+        maxLength: 255
         type: string
       last_name:
+        maxLength: 255
         type: string
       password:
-        minLength: 6
+        maxLength: 72
+        minLength: 8
         type: string
       state:
+        maxLength: 255
         type: string
       zip_code:
+        maxLength: 12
         type: string
     required:
     - city
@@ -72,11 +78,9 @@ definitions:
       email:
         type: string
       first_name:
+        description: Password  *string `json:"password" validate:"omitempty,min=6"`
         type: string
       last_name:
-        type: string
-      password:
-        minLength: 6
         type: string
       state:
         type: string
@@ -137,9 +141,9 @@ definitions:
         type: string
       id:
         type: integer
+      is_active:
+        type: boolean
       last_name:
-        type: string
-      password:
         type: string
       state:
         type: string
@@ -162,6 +166,34 @@ info:
   termsOfService: http://swagger.io/terms/
   title: ShotSeek API
 paths:
+  /authentication/register:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new user
+      parameters:
+      - description: User credentials
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/api.RegisterUserPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User Registered
+          schema:
+            $ref: '#/definitions/github_com_michaelhoman_ShotSeek_internal_store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Registers a new user
+      tags:
+      - users
   /posts:
     post:
       consumes:
@@ -429,39 +461,6 @@ paths:
       summary: Updates a comment
       tags:
       - comments
-  /users:
-    post:
-      consumes:
-      - application/json
-      description: Creates a new user from payload
-      parameters:
-      - description: User payload
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/api.CreateUserPayload'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_michaelhoman_ShotSeek_internal_store.User'
-        "400":
-          description: Bad Request
-          schema: {}
-        "404":
-          description: Not Found
-          schema: {}
-        "500":
-          description: Internal Server Error
-          schema: {}
-      security:
-      - ApiKeyAuth: []
-      summary: Creates a user
-      tags:
-      - users
   /users/{id}:
     delete:
       consumes:
@@ -552,6 +551,38 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Updates a user
+      tags:
+      - users
+  /users/activate/{token}:
+    put:
+      consumes:
+      - application/json
+      description: Activates a user by invitation token
+      parameters:
+      - description: Invitation token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User activated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Activates a user
       tags:
       - users
 securityDefinitions:
