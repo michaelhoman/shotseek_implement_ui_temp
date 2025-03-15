@@ -10,6 +10,7 @@ import (
 	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 
 	"github.com/michaelhoman/ShotSeek/internal/store"
+	"github.com/michaelhoman/ShotSeek/internal/utils"
 )
 
 type userKey string
@@ -44,12 +45,12 @@ type CreateUserPayload struct {
 
 // 	var payload CreateUserPayload
 // 	if err := readJSON(w, r, &payload); err != nil {
-// 		app.badRequestResponse(w, r, err)
+// 		utils.BadRequestResponse(w, r, err)
 // 		return
 // 	}
 
 // 	if err := Validate.Struct(payload); err != nil {
-// 		app.badRequestResponse(w, r, err)
+// 		utils.BadRequestResponse(w, r, err)
 // 		return
 // 	}
 
@@ -67,14 +68,14 @@ type CreateUserPayload struct {
 
 // 	usersStore := app.store.Users
 // 	if err := usersStore.Create(ctx, &user); err != nil {
-// 		app.internalServerError(w, r, err)
+// 		utils.InternalServerError(w, r, err)
 // 		return
 // 	}
 
 // 	// w.WriteHeader(http.StatusCreated)
 
 // 	if err := app.jsonResponse(w, http.StatusCreated, user); err != nil {
-// 		app.internalServerError(w, r, err)
+// 		utils.InternalServerError(w, r, err)
 // 		return
 // 	}
 // }
@@ -106,8 +107,8 @@ type UpdateUserPayload struct {
 func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromCtx(r)
 
-	if err := app.jsonResponse(w, http.StatusOK, user); err != nil {
-		app.internalServerError(w, r, err)
+	if err := utils.JsonResponse(w, http.StatusOK, user); err != nil {
+		utils.InternalServerError(w, r, err)
 		return
 	}
 }
@@ -131,13 +132,13 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	user := getUserFromCtx(r)
 
 	var payload UpdateUserPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.ReadJSON(w, r, &payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.Struct(payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
@@ -169,7 +170,7 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 
 	usersStore := app.store.Users
 	if err := usersStore.Update(ctx, user); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
@@ -195,7 +196,7 @@ func (app *application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 
 	usersStore := app.store.Users
 	if err := usersStore.Delete(ctx, user.ID); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
@@ -223,15 +224,15 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
-			app.badRequestResponse(w, r, err)
+			utils.BadRequestResponse(w, r, err)
 		default:
-			app.internalServerError(w, r, err)
+			utils.InternalServerError(w, r, err)
 		}
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusNoContent, "User activated"); err != nil {
-		app.internalServerError(w, r, err)
+	if err := utils.JsonResponse(w, http.StatusNoContent, "User activated"); err != nil {
+		utils.InternalServerError(w, r, err)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -243,7 +244,7 @@ func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 		id, err := strconv.ParseInt(idParam, 10, 64)
 
 		if err != nil {
-			app.internalServerError(w, r, err)
+			utils.InternalServerError(w, r, err)
 			return
 		}
 
@@ -253,9 +254,9 @@ func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
-				app.notFoundResponse(w, r, err)
+				utils.NotFoundResponse(w, r, err)
 			default:
-				app.internalServerError(w, r, err)
+				utils.InternalServerError(w, r, err)
 			}
 			return
 		}

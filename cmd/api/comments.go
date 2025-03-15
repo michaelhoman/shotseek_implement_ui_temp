@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 	"github.com/michaelhoman/ShotSeek/internal/store"
+	"github.com/michaelhoman/ShotSeek/internal/utils"
 )
 
 type commentKey string
@@ -39,17 +40,17 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 	var payload CreateCommentPayload
 	postID, err := strconv.ParseInt(chi.URLParam(r, "postID"), 10, 64)
 	if err != nil {
-		app.badRequestResponse(w, r, err)
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.ReadJSON(w, r, &payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.Struct(payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
@@ -63,7 +64,7 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 
 	commentsStore := app.store.Comments
 	if err := commentsStore.Create(ctx, &comment); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
@@ -90,8 +91,8 @@ func (app *application) getCommentHandler(w http.ResponseWriter, r *http.Request
 	comment := getCommentFromCtx(r)
 	fmt.Println("comment:", comment)
 
-	if err := app.jsonResponse(w, http.StatusOK, comment); err != nil {
-		app.internalServerError(w, r, err)
+	if err := utils.JsonResponse(w, http.StatusOK, comment); err != nil {
+		utils.InternalServerError(w, r, err)
 		return
 	}
 }
@@ -115,13 +116,13 @@ func (app *application) updateCommentHandler(w http.ResponseWriter, r *http.Requ
 	comment := getCommentFromCtx(r)
 
 	var payload CreateCommentPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.ReadJSON(w, r, &payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.Struct(payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
@@ -131,12 +132,12 @@ func (app *application) updateCommentHandler(w http.ResponseWriter, r *http.Requ
 
 	commentsStore := app.store.Comments
 	if err := commentsStore.Update(ctx, comment); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, comment); err != nil {
-		app.internalServerError(w, r, err)
+	if err := utils.JsonResponse(w, http.StatusOK, comment); err != nil {
+		utils.InternalServerError(w, r, err)
 	}
 }
 
@@ -158,12 +159,12 @@ func (app *application) DeleteByCommentIDHandler(w http.ResponseWriter, r *http.
 
 	commentID, err := strconv.ParseInt(chi.URLParam(r, "commentID"), 10, 64)
 	if err != nil {
-		app.badRequestResponse(w, r, err)
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 	comment, err := app.store.Comments.GetByCommentID(r.Context(), commentID)
 	if err != nil {
-		app.notFoundResponse(w, r, err)
+		utils.NotFoundResponse(w, r, err)
 		return
 	}
 
@@ -171,7 +172,7 @@ func (app *application) DeleteByCommentIDHandler(w http.ResponseWriter, r *http.
 
 	commentsStore := app.store.Comments
 	if err := commentsStore.DeleteByCommentID(ctx, comment.ID); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
@@ -182,12 +183,12 @@ func (app *application) DeleteByPostID(w http.ResponseWriter, r *http.Request) {
 
 	postID, err := strconv.ParseInt(chi.URLParam(r, "postID"), 10, 64)
 	if err != nil {
-		app.badRequestResponse(w, r, err)
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 	post, err := app.store.Posts.GetByID(r.Context(), postID)
 	if err != nil {
-		app.notFoundResponse(w, r, err)
+		utils.NotFoundResponse(w, r, err)
 		return
 	}
 
@@ -195,7 +196,7 @@ func (app *application) DeleteByPostID(w http.ResponseWriter, r *http.Request) {
 
 	commentsStore := app.store.Comments
 	if err := commentsStore.DeleteByPostID(ctx, post.ID); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
@@ -210,7 +211,7 @@ func (app *application) commentsContextMiddleware(next http.Handler) http.Handle
 
 		if err != nil {
 			fmt.Println("Error in commentsContextMiddleware")
-			app.internalServerError(w, r, err)
+			utils.InternalServerError(w, r, err)
 			return
 		}
 
@@ -220,9 +221,9 @@ func (app *application) commentsContextMiddleware(next http.Handler) http.Handle
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
-				app.notFoundResponse(w, r, err)
+				utils.NotFoundResponse(w, r, err)
 			default:
-				app.internalServerError(w, r, err)
+				utils.InternalServerError(w, r, err)
 			}
 			return
 		}

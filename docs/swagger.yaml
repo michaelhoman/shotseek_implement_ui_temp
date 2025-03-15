@@ -25,7 +25,49 @@ definitions:
     - content
     - title
     type: object
-  api.RegisterUserPayload:
+  api.UpdatePostPayload:
+    properties:
+      content:
+        maxLength: 1000
+        type: string
+      tags:
+        items:
+          type: string
+        maxItems: 100
+        type: array
+      title:
+        maxLength: 100
+        type: string
+    type: object
+  api.UpdateUserPayload:
+    properties:
+      city:
+        type: string
+      email:
+        type: string
+      first_name:
+        description: Password  *string `json:"password" validate:"omitempty,min=6"`
+        type: string
+      last_name:
+        type: string
+      state:
+        type: string
+      zip_code:
+        type: string
+    type: object
+  auth.LoginPayload:
+    properties:
+      email:
+        type: string
+      password:
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.RegisterUserPayload:
     properties:
       city:
         maxLength: 255
@@ -56,36 +98,6 @@ definitions:
     - password
     - state
     - zip_code
-    type: object
-  api.UpdatePostPayload:
-    properties:
-      content:
-        maxLength: 1000
-        type: string
-      tags:
-        items:
-          type: string
-        maxItems: 100
-        type: array
-      title:
-        maxLength: 100
-        type: string
-    type: object
-  api.UpdateUserPayload:
-    properties:
-      city:
-        type: string
-      email:
-        type: string
-      first_name:
-        description: Password  *string `json:"password" validate:"omitempty,min=6"`
-        type: string
-      last_name:
-        type: string
-      state:
-        type: string
-      zip_code:
-        type: string
     type: object
   github_com_michaelhoman_ShotSeek_internal_store.Comment:
     properties:
@@ -166,6 +178,37 @@ info:
   termsOfService: http://swagger.io/terms/
   title: ShotSeek API
 paths:
+  /authentication/login:
+    post:
+      consumes:
+      - application/json
+      description: Login a user
+      parameters:
+      - description: User credentials
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful, JWT stored in cookie
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Login a user
+      tags:
+      - users
   /authentication/register:
     post:
       consumes:
@@ -177,7 +220,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/api.RegisterUserPayload'
+          $ref: '#/definitions/auth.RegisterUserPayload'
       produces:
       - application/json
       responses:

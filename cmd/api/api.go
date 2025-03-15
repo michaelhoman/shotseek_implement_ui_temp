@@ -7,27 +7,47 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"go.uber.org/zap"
-
+	"github.com/michaelhoman/ShotSeek/cmd/ui"
 	"github.com/michaelhoman/ShotSeek/docs" // This is required to run Swagger Docs
+	"github.com/michaelhoman/ShotSeek/internal/auth"
+	"github.com/michaelhoman/ShotSeek/internal/config"
+	"github.com/michaelhoman/ShotSeek/internal/mailer"
 	"github.com/michaelhoman/ShotSeek/internal/store"
+	"github.com/michaelhoman/ShotSeek/internal/utils"
 
 	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 	httpSwagger "github.com/swaggo/http-swagger" // http-swagger middleware
 )
 
 type application struct {
-	config config
-	store  store.Storage
-	logger *zap.SugaredLogger
+	config     config.Config
+	store      store.Storage
+	mailer     mailer.Client
+	jwtService *auth.JWTService
 }
 
-type config struct {
-	addr   string
-	db     dbConfig
-	env    string
-	apiURL string
-	mail   mailConfig
+//	type config struct {
+//		addr   string
+//		db     dbConfig
+//		env    string
+//		apiURL string
+//		mail   mailConfig
+//		auth   authConfig
+//	}
+type authConfig struct {
+	basic basicConfig
+	token tokenConfig
+}
+type tokenConfig struct {
+	secret string
+	exp    time.Duration
+	iss    string
+	aud    string
+}
+
+type basicConfig struct {
+	user string
+	pass string
 }
 
 type mailConfig struct {
@@ -42,6 +62,7 @@ type dbConfig struct {
 }
 
 func (app *application) mount() http.Handler {
+	authHandler := auth.NewAuthHandler(app.store, app.config, app.jwtService)
 	r := chi.NewRouter()
 
 	// A good base middleware stack
@@ -55,10 +76,13 @@ func (app *application) mount() http.Handler {
 	// processing should be stopped.
 	r.Use(middleware.Timeout(60 * time.Second))
 
+	// Initialize JWT service
+	// jwtService := auth.NewJWTService(app.config.auth.token.secret, app.config.auth.token.exp)
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
 
-		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.Addr)
 		r.Get("/swagger/*", httpSwagger.Handler(
 			httpSwagger.URL(docsURL), //The url pointing to API definition
 		))
@@ -85,7 +109,8 @@ func (app *application) mount() http.Handler {
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			// r.Post("/", app.createUserHandler)
+			//r.Post("/", app.createUserHandler)
+			// r.Use(int_middleware.JwtMiddleware(authHandler))
 			r.Put("/activate/{token}", app.activateUserHandler)
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.usersContextMiddleware)
@@ -97,14 +122,14 @@ func (app *application) mount() http.Handler {
 
 		//public
 		r.Route("/authentication", func(r chi.Router) {
-			r.Post("/register", app.registerUserHandler)
-			//r.Post("/login", app.loginHandler)
+			r.Post("/register", authHandler.RegisterUserHandler)
+			r.Post("/login", authHandler.LoginHandler)
 			//r.Post("/logout", app.logoutHandler)
 		})
 
 	})
 
-	r.Mount("/", app.uiRoutes()) // Call the function and pass its return value
+	ui.RegisterUIRoutes(r) // Call the function and pass its return value
 
 	return r
 }
@@ -112,16 +137,16 @@ func (app *application) mount() http.Handler {
 func (app *application) run(mux http.Handler) error {
 	//docs
 	docs.SwaggerInfo.Version = version
-	docs.SwaggerInfo.Host = app.config.apiURL
+	docs.SwaggerInfo.Host = app.config.ApiURL
 	docs.SwaggerInfo.BasePath = "/v1"
 
 	srv := &http.Server{
-		Addr:         app.config.addr,
+		Addr:         app.config.Addr,
 		Handler:      mux,
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 10,
 		IdleTimeout:  time.Minute,
 	}
-	app.logger.Info("Server has started at ", "ADDR", app.config.addr, "ENV", app.config.env)
+	utils.Logger.Info("Server has started at ", "ADDR", app.config.Addr, "ENV", app.config.Env)
 	return srv.ListenAndServe()
 }

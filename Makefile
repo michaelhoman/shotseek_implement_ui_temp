@@ -15,4 +15,4 @@ migrate-create:
 
 
 gen-docs:
-	swag init -g ./api/main.go -d cmd,internal/store --parseDependency && swag fmt
+	swag init -g ./api/main.go -d cmd,internal/store,internal/auth --parseDependency && swag fmt

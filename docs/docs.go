@@ -24,6 +24,52 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/authentication/login": {
+            "post": {
+                "description": "Login a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Login a user",
+                "parameters": [
+                    {
+                        "description": "User credentials",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful, JWT stored in cookie",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/authentication/register": {
             "post": {
                 "description": "Registers a new user",
@@ -44,7 +90,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.RegisterUserPayload"
+                            "$ref": "#/definitions/auth.RegisterUserPayload"
                         }
                     }
                 ],
@@ -701,48 +747,6 @@ const docTemplate = `{
                 }
             }
         },
-        "api.RegisterUserPayload": {
-            "type": "object",
-            "required": [
-                "city",
-                "email",
-                "first_name",
-                "last_name",
-                "password",
-                "state",
-                "zip_code"
-            ],
-            "properties": {
-                "city": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "email": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "last_name": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "password": {
-                    "type": "string",
-                    "maxLength": 72,
-                    "minLength": 8
-                },
-                "state": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "zip_code": {
-                    "type": "string",
-                    "maxLength": 12
-                }
-            }
-        },
         "api.UpdatePostPayload": {
             "type": "object",
             "properties": {
@@ -784,6 +788,65 @@ const docTemplate = `{
                 },
                 "zip_code": {
                     "type": "string"
+                }
+            }
+        },
+        "auth.LoginPayload": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 8
+                }
+            }
+        },
+        "auth.RegisterUserPayload": {
+            "type": "object",
+            "required": [
+                "city",
+                "email",
+                "first_name",
+                "last_name",
+                "password",
+                "state",
+                "zip_code"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 8
+                },
+                "state": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "zip_code": {
+                    "type": "string",
+                    "maxLength": 12
                 }
             }
         },

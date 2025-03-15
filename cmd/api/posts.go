@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 	"github.com/michaelhoman/ShotSeek/internal/store"
+	"github.com/michaelhoman/ShotSeek/internal/utils"
 )
 
 type postKey string
@@ -40,13 +41,13 @@ func (app *application) createPostsHandler(w http.ResponseWriter, r *http.Reques
 	fmt.Println("Create post handler")
 
 	var payload CreatePostPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.ReadJSON(w, r, &payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.StructCtx(r.Context(), payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.StructCtx(r.Context(), payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
@@ -62,12 +63,12 @@ func (app *application) createPostsHandler(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 
 	if err := app.store.Posts.Create(ctx, &post); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusCreated, post); err != nil {
-		app.internalServerError(w, r, err)
+	if err := utils.JsonResponse(w, http.StatusCreated, post); err != nil {
+		utils.InternalServerError(w, r, err)
 		return
 	}
 }
@@ -93,14 +94,14 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 	comments, err := app.store.Comments.GetByPostID(r.Context(), post.ID)
 
 	if err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
 	post.Comments = comments
 
-	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
-		app.internalServerError(w, r, err)
+	if err := utils.JsonResponse(w, http.StatusOK, post); err != nil {
+		utils.InternalServerError(w, r, err)
 		return
 	}
 
@@ -132,13 +133,13 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 	post := getPostFromCtx(r)
 
 	var payload UpdatePostPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.ReadJSON(w, r, &payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
-	if err := Validate.Struct(payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	if err := utils.Validate.Struct(payload); err != nil {
+		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
@@ -155,11 +156,11 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 	ctx := r.Context()
 
 	if err := app.store.Posts.Update(ctx, post); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 	}
 
-	if err := app.jsonResponse(w, http.StatusOK, post); err != nil {
-		app.internalServerError(w, r, err)
+	if err := utils.JsonResponse(w, http.StatusOK, post); err != nil {
+		utils.InternalServerError(w, r, err)
 	}
 }
 
@@ -181,16 +182,16 @@ func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request
 	postIDStr := chi.URLParam(r, "postID")
 	postID, err := strconv.ParseInt(postIDStr, 10, 64)
 	if err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 	}
 
 	ctx := r.Context()
 	if err := app.store.Comments.DeleteByPostID(ctx, postID); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 	if err := app.store.Posts.Delete(ctx, postID); err != nil {
-		app.internalServerError(w, r, err)
+		utils.InternalServerError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -202,7 +203,7 @@ func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
 		id, err := strconv.ParseInt(idParam, 10, 64)
 
 		if err != nil {
-			app.internalServerError(w, r, err)
+			utils.InternalServerError(w, r, err)
 			return
 		}
 
@@ -212,9 +213,9 @@ func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
-				app.notFoundResponse(w, r, err)
+				utils.NotFoundResponse(w, r, err)
 			default:
-				app.internalServerError(w, r, err)
+				utils.InternalServerError(w, r, err)
 			}
 			return
 		}

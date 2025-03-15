@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -39,14 +40,21 @@ type password struct {
 }
 
 func (p *password) Set(plain string) error {
+	fmt.Println("Setting password") // TODO: Remove Debugging line
 	hash, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// p.text = &plain
 	p.hash = hash
 	return nil
+}
+
+func (p *password) Compare(plain string) error {
+	fmt.Println("Comparing password")            //TODO: Remove this line
+	fmt.Println("p.hash", p.hash)                //TODO: Remove this line
+	fmt.Println("[]byte(p.hash)", []byte(plain)) //TODO: Remove this line
+	return bcrypt.CompareHashAndPassword(p.hash, []byte(plain))
 }
 
 type UserStore struct {
@@ -87,6 +95,43 @@ INSERT INTO users ( email, password, first_name, last_name, zip_code, city, stat
 		return nil
 
 	}
+}
+
+func (s *UserStore) GetByEmail(ctx context.Context, email string) (*User, error) {
+	query := `
+SELECT id, email, password, first_name, last_name, zip_code, city, state, created_at, updated_at, version, is_active
+FROM users
+WHERE email = $1
+`
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	user := User{}
+
+	err := s.db.QueryRowContext(ctx, query, email).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Password.hash,
+		&user.FirstName,
+		&user.LastName,
+		&user.Zipcode,
+		&user.City,
+		&user.State,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.Version,
+		&user.IsActive,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &user, nil
 }
 
 func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+
+    <!-- Tailwind CSS with Dark Mode Support -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+</head>
+<body class="p-6 bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg transition-colors duration-300">
+        
+        <!-- Toggle Button -->
+        <div class="flex justify-end">
+            <button onclick="toggleTheme()" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-gray-800 dark:text-gray-200 transition-colors duration-300">
+                Toggle Theme
+            </button>
+        </div>
+
+        <!-- <h1 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-200"></h1> -->
+        
+        <div id="message" class="mt-4 text-gray-900 dark:text-gray-200">
+            <!-- Form -->
+             <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-200">Login</h2>
+            <form hx-post="/v1/authentication/login" 
+                  hx-trigger="submit" 
+                  hx-target="this" 
+                  hx-swap="outerHTML"  
+                  hx-ext="json-enc"
+                  class="space-y-3">
+                
+                <input type="email" name="email" placeholder="Email" class="border p-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required>
+                <input type="password" name="password" placeholder="Password" class="border p-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" required>
+                
+                <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-all">Register</button>
+            </form>
+        </div>
+        
+    </div>
+
+    <script>
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        }
+
+        // Load theme preference
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+</body>
+</html>
