@@ -40,13 +40,15 @@ type AuthHandler struct {
 	store      store.Storage
 	config     config.Config
 	jwtService *JWTService
+	JWTAuth    *JWTAuth
 }
 
-func NewAuthHandler(store store.Storage, config config.Config, jwtService *JWTService) *AuthHandler {
+func NewAuthHandler(store store.Storage, config config.Config, jwtService *JWTService, jwtAuth *JWTAuth) *AuthHandler {
 	return &AuthHandler{
 		store:      store,
 		config:     config,
 		jwtService: jwtService,
+		JWTAuth:    jwtAuth,
 	}
 }
 
@@ -200,9 +202,9 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := getIPAddress(r)
+	ip := a.GetIPAddress(r)
 	userAgent := r.UserAgent()
-	fingerprint := generateFingerprint(ip, userAgent) // Optional fingerprint
+	fingerprint := a.GenerateFingerprint(ip, userAgent) // Optional fingerprint
 
 	token, err := a.generateJWT(payload.Email, fingerprint)
 	if err != nil {
@@ -226,19 +228,87 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Login successful, JWT stored in cookie"))
 }
 
+// LogoutHandler godoc
+//
+//	@Summary		Logout a user
+//	@Description	Logout a user
+//	@Tags			users
+//	@Produce		json
+//	@Success		200	{string}	string	"Logout successful"
+//	@Failure		500	{object}	error
+//	@Router			/authentication/logout [post]
+func (a *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	// Clear the auth_token cookie by setting MaxAge to -1 (expires immediately)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		Path:     "/",                  // Ensure it applies to the entire domain
+		HttpOnly: true,                 // Maintain security
+		Secure:   true,                 // Use Secure for HTTPS
+		SameSite: http.SameSiteLaxMode, // Adjust as needed
+		MaxAge:   -1,                   // Expires immediately
+		Expires:  time.Unix(0, 0),      // Alternative expiration method
+	})
+
+	// Optionally, send a response confirming logout
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Logged out successfully"))
+}
+
 // ExtractJWTToken extracts the JWT token from the Authorization header
+// func ExtractJWTToken(r *http.Request) (string, error) {
+// 	// Extract JWT from Authorization header
+// 	authHeader := r.Header.Get("Authorization")
+// 	if authHeader == "" {
+// 		return "", errors.New("missing Authorization header")
+// 	}
+
+// 	// Token format validation (Bearer <token>)
+// 	tokenParts := strings.Split(authHeader, " ")
+// 	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+// 		return "", errors.New("invalid Authorization header format")
+// 	}
+
+//		return tokenParts[1], nil
+//	}
+//2// func ExtractJWTToken(r *http.Request) (string, error) {
+// 	// 1. Try to get the token from the Authorization header
+// 	authHeader := r.Header.Get("Authorization")
+// 	if authHeader != "" {
+// 		tokenParts := strings.Split(authHeader, " ")
+// 		if len(tokenParts) == 2 && tokenParts[0] == "Bearer" {
+// 			return tokenParts[1], nil
+// 		}
+// 		return "", errors.New("invalid Authorization header format")
+// 	}
+
+// 	// 2. If no Authorization header, check the cookie
+// 	cookie, err := r.Cookie("auth_token")
+// 	if err == nil {
+// 		return cookie.Value, nil
+// 	}
+
+//		return "", errors.New("no JWT found in Authorization header or cookie")
+//	}
 func ExtractJWTToken(r *http.Request) (string, error) {
-	// Extract JWT from Authorization header
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return "", errors.New("missing Authorization header")
+	// Check the "auth_token" cookie first
+	cookie, err := r.Cookie("auth_token")
+	fmt.Println("cookie:", cookie) // Debugging
+	if err == nil {
+		return cookie.Value, nil
 	}
 
-	// Token format validation (Bearer <token>)
+	// Fall back to Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("missing token")
+	}
+
 	tokenParts := strings.Split(authHeader, " ")
 	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
 		return "", errors.New("invalid Authorization header format")
 	}
 
+	fmt.Println("tokenParts[1]:", tokenParts[1]) // Debugging
 	return tokenParts[1], nil
 }

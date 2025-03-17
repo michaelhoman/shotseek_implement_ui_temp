@@ -209,6 +209,22 @@ paths:
       summary: Login a user
       tags:
       - users
+  /authentication/logout:
+    post:
+      description: Logout a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Logout a user
+      tags:
+      - users
   /authentication/register:
     post:
       consumes:

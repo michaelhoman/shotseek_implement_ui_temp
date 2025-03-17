@@ -86,6 +86,7 @@ func main() {
 	store := store.NewPostgresStorage(db)
 
 	jwtService := auth.NewJWTService(cfg.Auth.Token.Secret, cfg.Auth.Token.Exp)
+
 	// authHandler := auth.NewAuthHandler(store, cfg, jwtService)
 	// Initialize JWTAuth with the ECDSA keys
 	jwtAuth, err := auth.NewJWTAuth()
@@ -100,6 +101,7 @@ func main() {
 		config:     cfg,
 		store:      store,
 		jwtService: jwtService,
+		jwtAuth:    jwtAuth,
 	}
 
 	mux := app.mount()

@@ -12,6 +12,7 @@ import (
 	"github.com/michaelhoman/ShotSeek/internal/auth"
 	"github.com/michaelhoman/ShotSeek/internal/config"
 	"github.com/michaelhoman/ShotSeek/internal/mailer"
+	int_middleware "github.com/michaelhoman/ShotSeek/internal/middleware"
 	"github.com/michaelhoman/ShotSeek/internal/store"
 	"github.com/michaelhoman/ShotSeek/internal/utils"
 
@@ -24,6 +25,7 @@ type application struct {
 	store      store.Storage
 	mailer     mailer.Client
 	jwtService *auth.JWTService
+	jwtAuth    *auth.JWTAuth
 }
 
 //	type config struct {
@@ -62,7 +64,7 @@ type dbConfig struct {
 }
 
 func (app *application) mount() http.Handler {
-	authHandler := auth.NewAuthHandler(app.store, app.config, app.jwtService)
+	authHandler := auth.NewAuthHandler(app.store, app.config, app.jwtService, app.jwtAuth)
 	r := chi.NewRouter()
 
 	// A good base middleware stack
@@ -110,7 +112,7 @@ func (app *application) mount() http.Handler {
 
 		r.Route("/users", func(r chi.Router) {
 			//r.Post("/", app.createUserHandler)
-			// r.Use(int_middleware.JwtMiddleware(authHandler))
+			r.Use(int_middleware.JwtMiddleware(authHandler))
 			r.Put("/activate/{token}", app.activateUserHandler)
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.usersContextMiddleware)
@@ -124,6 +126,7 @@ func (app *application) mount() http.Handler {
 		r.Route("/authentication", func(r chi.Router) {
 			r.Post("/register", authHandler.RegisterUserHandler)
 			r.Post("/login", authHandler.LoginHandler)
+			r.Post("/logout", authHandler.LogoutHandler)
 			//r.Post("/logout", app.logoutHandler)
 		})
 

@@ -112,9 +112,44 @@ func loadPublicKey(path string) (*ecdsa.PublicKey, error) {
 }
 
 // Function to create JWT
+// func (a *AuthHandler) generateJWT(userID string, fingerprint string) (string, error) {
+// 	// Get the secret key from the environment variable
+// 	jwtSigningKey := []byte(os.Getenv("JWT_SIGNING_KEY"))
+// 	// Set the expiration time (e.g., 1 hour from now)
+// 	expirationTime := time.Now().Add(a.config.Auth.Token.Exp).Unix()
+
+// 	// Create the claims
+// 	claims := Claims{
+// 		Fingerprint: fingerprint, // Custom claim
+// 		RegisteredClaims: jwt.RegisteredClaims{
+// 			Issuer:    a.config.Auth.Token.Iss,
+// 			Audience:  jwt.ClaimStrings{a.config.Auth.Token.Aud},
+// 			Subject:   userID,
+// 			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+// 			ExpiresAt: &jwt.NumericDate{Time: time.Unix(expirationTime, 0)},
+// 		},
+// 	}
+
+// 	// Create the token using ES256 algorithm
+// 	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+
+// 	// Sign the token with your secret key
+// 	signedToken, err := token.SignedString(jwtSigningKey)
+// 	if err != nil {
+// 		return "", fmt.Errorf("could not sign the token: %v", err)
+// 	}
+// 	return signedToken, nil
+// }
+
 func (a *AuthHandler) generateJWT(userID string, fingerprint string) (string, error) {
-	// Get the secret key from the environment variable
-	jwtSigningKey := []byte(os.Getenv("JWT_SIGNING_KEY"))
+	fmt.Println("Generating JWT for user:", userID) // TODO REMOVE Debugging
+	// Load the private key for signing (this can be done using the method we defined earlier)
+
+	// privateKey, err := loadPrivateKey(a.JWTAuth.PrivateKey) // Path to your private key
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to load private key: %v", err)
+	// }
+
 	// Set the expiration time (e.g., 1 hour from now)
 	expirationTime := time.Now().Add(a.config.Auth.Token.Exp).Unix()
 
@@ -132,9 +167,11 @@ func (a *AuthHandler) generateJWT(userID string, fingerprint string) (string, er
 
 	// Create the token using ES256 algorithm
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	fmt.Println("Token created:", token) // TODO REMOVE Debugging
 
-	// Sign the token with your secret key
-	signedToken, err := token.SignedString(jwtSigningKey)
+	// Sign the token with your ECDSA private key
+	signedToken, err := token.SignedString(a.JWTAuth.PrivateKey)
+	fmt.Println("Signed token:", signedToken) // TODO REMOVE Debugging
 	if err != nil {
 		return "", fmt.Errorf("could not sign the token: %v", err)
 	}
@@ -173,7 +210,7 @@ func anonymizeIP(ip string) string {
 }
 
 // Function to generate an IP fingerprint hash
-func generateFingerprint(ip, userAgent string) string {
+func (a *AuthHandler) GenerateFingerprint(ip, userAgent string) string {
 	// Anonymize IP before generating fingerprint
 	anonymizedIP := anonymizeIP(ip)
 
@@ -189,34 +226,37 @@ func generateFingerprint(ip, userAgent string) string {
 }
 
 // Middleware to validate JWT fingerprint
-func validateFingerprint(r *http.Request, expectedHash string) bool {
+func (a *AuthHandler) ValidateFingerprint(r *http.Request, expectedHash string) bool {
 	// Get client IP (use X-Forwarded-For if available, fallback to RemoteAddr)
-	ip := r.Header.Get("X-Forwarded-For")
+	// ip := r.Header.Get("X-Forwarded-For")
+	ip := a.GetIPAddress(r)
 	if ip == "" {
 		ip = r.RemoteAddr
 	}
 
-	// Ensure we only take the first IP in the X-Forwarded-For header (if multiple)
-	ips := strings.Split(ip, ",")
-	ip = strings.TrimSpace(ips[0])
+	// // Ensure we only take the first IP in the X-Forwarded-For header (if multiple)
+	// ips := strings.Split(ip, ",")
+	// ip = strings.TrimSpace(ips[0])
 
 	// Get the user agent from the request
 	userAgent := r.UserAgent()
 
 	// Generate current fingerprint and compare with expected fingerprint
-	currentHash := generateFingerprint(ip, userAgent)
+	currentHash := a.GenerateFingerprint(ip, userAgent)
 	return currentHash == expectedHash
 }
 
 func (a *AuthHandler) ValidateJWT(r *http.Request, tokenString, requestFingerprint string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate Algorithm
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok || token.Method.Alg() != jwt.SigningMethodES256.Name {
+		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		// Get the secret key from the environment variable
-		jwtSigningKey := []byte(os.Getenv("JWT_SIGNING_KEY"))
-		return jwtSigningKey, nil
+		// // Get the secret key from the environment variable
+		// jwtSigningKey := []byte(os.Getenv("JWT_SIGNING_KEY"))
+		// return jwtSigningKey, nil
+		return a.JWTAuth.PublicKey, nil
+
 	},
 		jwt.WithExpirationRequired(),                                // Ensure expiration is required and checked
 		jwt.WithAudience(a.config.Auth.Token.Aud),                   // Validate audience
@@ -239,8 +279,10 @@ func (a *AuthHandler) ValidateJWT(r *http.Request, tokenString, requestFingerpri
 		return nil, fmt.Errorf("invalid token issuer")
 	}
 
+	fmt.Printf("Extracted JWT Fingerprint: %s\n", claims.Fingerprint)
+	fmt.Printf("Request Fingerprint: %s\n", requestFingerprint)
 	// Validate Fingerprint
-	if !validateFingerprint(r, claims.Fingerprint) {
+	if !a.ValidateFingerprint(r, claims.Fingerprint) {
 		return nil, fmt.Errorf("invalid fingerprint")
 	}
 
@@ -263,7 +305,7 @@ func GetTokenFromCookie(r *http.Request) (string, error) {
 }
 
 // Helper function to extract the IP address
-func getIPAddress(r *http.Request) string {
+func (a *AuthHandler) GetIPAddress(r *http.Request) string {
 	// Check if the IP is set by a proxy (e.g., Nginx, Cloudflare)
 	ip := r.Header.Get("X-Forwarded-For")
 	if ip == "" {
