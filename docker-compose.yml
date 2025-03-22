@@ -9,6 +9,7 @@ services:
     # or set shared memory limit when deploy via swarm stack
     volumes:
       - db_data:/var/lib/posgresql_shotseek/data
+      - /Users/m/dev/locations_shotseek:/import_data
     #  - type: tmpfs
     #    target: /dev/shm
     #    tmpfs:

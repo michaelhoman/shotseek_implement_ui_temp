@@ -38,6 +38,10 @@ type Storage struct {
 		DeleteByCommentID(context.Context, int64) error
 		DeleteByPostID(context.Context, int64) error
 	}
+	Tokens interface {
+		UpdateRefreshToken(ctx context.Context, userEmail, token string, expiresAt time.Time) error
+		GetRefreshTokens(ctx context.Context, userEmail string) ([]*RefreshToken, error)
+	}
 }
 
 func NewPostgresStorage(db *sql.DB) Storage {

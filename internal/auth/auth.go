@@ -206,6 +206,16 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.UserAgent()
 	fingerprint := a.GenerateFingerprint(ip, userAgent) // Optional fingerprint
 
+	newRefreshToken, err := a.generateRefreshToken()
+	newRefreshTokenHash := a.hashToken(newRefreshToken)
+
+	// Store the refresh token in the database
+	err = a.store.Tokens.UpdateRefreshToken(r.Context(), user.Email, newRefreshTokenHash, time.Now().Add(a.config.Auth.RefreshToken.Exp))
+	if err != nil {
+		utils.InternalServerError(w, r, err)
+		return
+	}
+
 	token, err := a.generateJWT(payload.Email, fingerprint)
 	if err != nil {
 		fmt.Println("Error generating JWT:", err) // TODO Remove Debugging
@@ -222,6 +232,17 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,                                    // Only sent over HTTPS
 		SameSite: http.SameSiteStrictMode,                 // Prevent CSRF
 		Expires:  time.Now().Add(a.config.Auth.Token.Exp), // Cookie expiration time
+	})
+
+	// Set the refresh token in a secure, HTTP-only cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    newRefreshToken,
+		Path:     "/",
+		HttpOnly: true,                                           // Ensures it's inaccessible via JavaScript
+		Secure:   true,                                           // Only sent over HTTPS
+		SameSite: http.SameSiteStrictMode,                        // Adjust as necessary
+		Expires:  time.Now().Add(a.config.Auth.RefreshToken.Exp), // Set expiration based on config
 	})
 
 	// Respond to the user (no need to send the token in the body)
@@ -241,6 +262,18 @@ func (a *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// Clear the auth_token cookie by setting MaxAge to -1 (expires immediately)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
+		Value:    "",
+		Path:     "/",                  // Ensure it applies to the entire domain
+		HttpOnly: true,                 // Maintain security
+		Secure:   true,                 // Use Secure for HTTPS
+		SameSite: http.SameSiteLaxMode, // Adjust as needed
+		MaxAge:   -1,                   // Expires immediately
+		Expires:  time.Unix(0, 0),      // Alternative expiration method
+	})
+
+	// Clear the refresh_token cookie by setting MaxAge to -1 (expires immediately)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
 		Value:    "",
 		Path:     "/",                  // Ensure it applies to the entire domain
 		HttpOnly: true,                 // Maintain security

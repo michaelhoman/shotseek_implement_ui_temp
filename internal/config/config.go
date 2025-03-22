@@ -18,8 +18,9 @@ type Config struct {
 
 // AuthConfig contains authentication-related settings
 type AuthConfig struct {
-	Basic BasicConfig
-	Token TokenConfig
+	Basic        BasicConfig
+	Token        TokenConfig
+	RefreshToken TokenConfig
 }
 
 // TokenConfig defines JWT-related settings
@@ -74,6 +75,12 @@ func Load() Config {
 				Exp:    time.Minute * 6, // 6 minutes
 				Iss:    "shotseek-auth-service",
 				Aud:    "shotseek-api",
+			},
+			RefreshToken: TokenConfig{
+				Secret: env.GetString("REFRESH_TOKEN_SECRET", "refresh-example"), // Secret for refresh token (optional)
+				Exp:    time.Hour * 24 * 7,                                       // 7 days (refresh token expiration)
+				Iss:    "shotseek-auth-service",
+				Aud:    "shotseek-api-refresh", // Different audience for refresh token
 			},
 		},
 	}

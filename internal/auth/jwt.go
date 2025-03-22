@@ -1,9 +1,12 @@
 package auth
 
 import (
+	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
@@ -330,4 +333,38 @@ func (a *AuthHandler) authenticateRequest(r *http.Request) (*Claims, error) {
 
 	// If token is valid, return claims
 	return claims, nil
+}
+
+// Generate a secure random refresh token
+func (a *AuthHandler) generateRefreshToken() (string, error) {
+	bytes := make([]byte, 32) // 256-bit token
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(bytes), nil // Safe for URLs
+}
+
+// Hash the refresh token for storage
+func (a *AuthHandler) hashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return base64.StdEncoding.EncodeToString(hash[:]) // Store in DB
+}
+
+func (a *AuthHandler) ValidateRefreshToken(ctx context.Context, userEmail, refreshToken, clientFP string) bool {
+	storedTokens, err := a.store.Tokens.GetRefreshTokens(ctx, userEmail) // Fetch stored token and fingerprint                     // Hash the stored token for comparison
+	if err != nil {
+		return false
+	}
+
+	// Loop through all stored tokens and check if any match
+	for _, token := range storedTokens {
+		// Compare the token hash and fingerprint
+		if token.TokenHash == refreshToken && token.StoredFP == clientFP {
+			return true // Found a valid match
+		}
+	}
+
+	// No matching token found
+	return false
 }
