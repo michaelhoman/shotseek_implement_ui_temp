@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -168,21 +169,36 @@ func (a *AuthHandler) RegisterUserHandler(w http.ResponseWriter, r *http.Request
 //	@Router			/authentication/login [post]
 func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("LoginHandler inital call") // Debugging
+	tokenStore := a.store.Tokens
+	if tokenStore == nil {
+		log.Println("Error: tokenStore is nil")
+		utils.InternalServerError(w, r, errors.New("internal server error"))
+		return
+	}
+
 	var payload LoginPayload
 
+	fmt.Println("*1") // Debugging
 	if err := utils.ReadJSON(w, r, &payload); err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
 	}
+
+	fmt.Println("*2") // Debugging
 
 	if err := utils.Validate.Struct(payload); err != nil {
 		utils.BadRequestResponse(w, r, err)
 		return
 	}
 
+	fmt.Println("*3") // Debugging
+
 	// Authenticate the user (e.g., check the password against the db)
 
 	user, err := a.store.Users.GetByEmail(r.Context(), payload.Email)
+
+	fmt.Println("*4")                            // Debugging
+	fmt.Println("payload.Email:", payload.Email) // Debugging
 
 	fmt.Println("user:", user) // Debugging
 
@@ -196,6 +212,8 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("*5") // Debugging
+	// Compare the hashed password
 	fmt.Println(payload.Password) // Debugging
 	if err := user.Password.Compare(payload.Password); err != nil {
 		utils.UnauthorizedErrorResponse(w, r, err)
@@ -206,11 +224,29 @@ func (a *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	userAgent := r.UserAgent()
 	fingerprint := a.GenerateFingerprint(ip, userAgent) // Optional fingerprint
 
+	fmt.Println("*6") // Debugging
+
 	newRefreshToken, err := a.generateRefreshToken()
+	fmt.Println("* 7 newRefreshToken:", newRefreshToken) // Debugging
+	if err != nil {
+		utils.InternalServerError(w, r, err)
+		return
+	}
+
 	newRefreshTokenHash := a.hashToken(newRefreshToken)
+	fmt.Println("*8 newRefreshTokenHash:", newRefreshTokenHash) // Debugging
+
+	fmt.Println("*9 a.store.Tokens:", a.store.Tokens) // Debugging
+	if a.store.Tokens == nil {
+		log.Println("Error: a.store.Tokens is nil")
+		utils.InternalServerError(w, r, errors.New("internal server error"))
+		return
+	}
 
 	// Store the refresh token in the database
-	err = a.store.Tokens.UpdateRefreshToken(r.Context(), user.Email, newRefreshTokenHash, time.Now().Add(a.config.Auth.RefreshToken.Exp))
+	err = tokenStore.UpdateRefreshToken(r.Context(), user.Email, newRefreshTokenHash, fingerprint, time.Now().Add(a.config.Auth.RefreshToken.Exp))
+
+	fmt.Println("*10") // Debugging
 	if err != nil {
 		utils.InternalServerError(w, r, err)
 		return
@@ -344,4 +380,78 @@ func ExtractJWTToken(r *http.Request) (string, error) {
 
 	fmt.Println("tokenParts[1]:", tokenParts[1]) // Debugging
 	return tokenParts[1], nil
+}
+
+// RefreshHandler will handle the refresh logic for the auth token
+
+// RefreshHandler godoc
+//
+//	@Summary		Refresh the JWT token
+//	@Description	Refresh the JWT token
+//	@Tags			users
+//	@Produce		json
+//	@Success		200	{string}	string	"JWT refreshed successfully"
+//	@Failure		401	{object}	error
+//	@Failure		500	{object}	error
+//	@Router			/authentication/refresh [post]
+func (a *AuthHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("RefreshHandler initial call") // Debugging
+
+	// Step 1: Get the refresh_token from the cookies
+	cookie, err := r.Cookie("refresh_token")
+	fmt.Println("cookie:", cookie) // Debugging
+	if err != nil {
+		fmt.Println("Error getting refresh token cookie:", err) // Debugging
+		utils.UnauthorizedErrorResponse(w, r, errors.New("no refresh token"))
+		return
+	}
+
+	// Step 2: Validate the refresh token
+	refreshToken := cookie.Value
+	refreshTokenHash := a.hashToken(refreshToken)
+	userEmail, err := a.validateRefreshToken(r, refreshTokenHash) // Validate the refresh token logic
+
+	if err != nil {
+		utils.UnauthorizedErrorResponse(w, r, err)
+		return
+	}
+
+	// Step 3: Generate a new JWT (auth_token)
+	// You might want to pass a fingerprint here if you’re using one
+	newAuthToken, err := a.generateJWT(userEmail, "") // Pass fingerprint if needed
+	if err != nil {
+		utils.InternalServerError(w, r, err)
+		return
+	}
+
+	// Step 4: Set the new JWT in the auth_token cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    newAuthToken,
+		Path:     "/",
+		HttpOnly: true,                                    // Prevents JS access to the cookie
+		Secure:   true,                                    // Ensures cookie is sent only over HTTPS
+		SameSite: http.SameSiteStrictMode,                 // Prevents CSRF
+		Expires:  time.Now().Add(a.config.Auth.Token.Exp), // Set expiration time for the JWT cookie
+	})
+
+	// Step 5: Respond to the user with a success message
+	w.Write([]byte("JWT refreshed successfully"))
+}
+
+// validateRefreshToken checks if the refresh token is valid
+func (a *AuthHandler) validateRefreshToken(r *http.Request, refreshToken string) (string, error) {
+	// Step 1: Check if the refresh token exists in the database
+	tokenRecord, err := a.store.Tokens.GetByRefreshTokenHash(r.Context(), refreshToken) // Use r.Context() here
+	if err != nil {
+		return "", errors.New("invalid or expired refresh token")
+	}
+
+	// Step 2: Ensure the token has not expired
+	if tokenRecord.ExpiresAt.Before(time.Now()) {
+		return "", errors.New("refresh token has expired")
+	}
+
+	// Step 3: Return the email associated with the token
+	return tokenRecord.UserEmail, nil
 }

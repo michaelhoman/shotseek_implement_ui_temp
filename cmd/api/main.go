@@ -102,6 +102,7 @@ func main() {
 		store:      store,
 		jwtService: jwtService,
 		jwtAuth:    jwtAuth,
+		auth:       auth.NewAuthHandler(store, cfg, jwtService, jwtAuth),
 	}
 
 	mux := app.mount()

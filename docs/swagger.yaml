@@ -225,6 +225,25 @@ paths:
       summary: Logout a user
       tags:
       - users
+  /authentication/refresh:
+    post:
+      description: Refresh the JWT token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT refreshed successfully
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Refresh the JWT token
+      tags:
+      - users
   /authentication/register:
     post:
       consumes:

@@ -1,3 +1,5 @@
 .envrc
 bin/main
+bin/main.exe
 bin/build-errors.log
+.DS_Store

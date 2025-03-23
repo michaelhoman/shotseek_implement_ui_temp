@@ -94,6 +94,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/authentication/refresh": {
+            "post": {
+                "description": "Refresh the JWT token",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Refresh the JWT token",
+                "responses": {
+                    "200": {
+                        "description": "JWT refreshed successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/authentication/register": {
             "post": {
                 "description": "Registers a new user",

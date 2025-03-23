@@ -40,3 +40,20 @@ awk -F'\t' 'BEGIN {OFS=","} {
 ```
 \i /path/to/final_sql.sql
 ```
+
+
+### Generate localhost https certs for dev
+`openssl req -new -x509 -keyout .keys/https/localhost.key -out .keys/https/localhost.crt -days 365 -nodes -config .keys/https/openssl.cnf`
+
+#### Import into the trusted store:
+##### Mac:
+`sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain /Users/m/dev/shotseek/.keys/https/localhost.crt`
+Replace /Users/m/dev/shotseek/.keys/https/localhost.crt with the actual path to the certificate
+
+##### Windows
+Run the following commands in powershell
+```powershell
+$certPath = "C:\path\to\your\localhost.crt"
+$certStore = "Cert:\LocalMachine\Root"
+Import-Certificate -FilePath $certPath -CertStoreLocation $certStore
+```

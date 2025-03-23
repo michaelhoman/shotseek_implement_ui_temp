@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -18,25 +19,46 @@ type TokenStore struct {
 	db *sql.DB
 }
 
-func (s *TokenStore) UpdateRefreshToken(ctx context.Context, userEmail, token_hash string, expiresAt time.Time) error {
+// func (s *TokenStore) UpdateRefreshToken(ctx context.Context, userEmail, token_hash string, expiresAt time.Time) error {
+// 	query := `
+//     INSERT INTO refresh_tokens (user_email, token_hash, expires_at)
+//     VALUES ($1, $2, $3)
+//     ON CONFLICT(token_hash)
+//     DO UPDATE SET token_hash = $2, expires_at = $3
+//     `
+// 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+// 	defer cancel()
+
+// 	_, err := s.db.ExecContext(ctx, query, userEmail, token_hash, expiresAt)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func (s *TokenStore) UpdateRefreshToken(ctx context.Context, userEmail, token_hash, stored_fp string, expiresAt time.Time) error {
 	query := `
-    INSERT INTO refresh_tokens (user_email, token_hash, expires_at)
-    VALUES ($1, $2, $3)
-    ON CONFLICT(token) 
-    DO UPDATE SET token = $2, expires_at = $3
+    INSERT INTO refresh_tokens (user_email, token_hash, stored_fp, expires_at)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT(token_hash) 
+    DO UPDATE SET token_hash = $2, stored_fp = $3, expires_at = $4
     `
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	_, err := s.db.ExecContext(ctx, query, userEmail, token_hash, expiresAt)
+	fmt.Println("Executing query:", query) // Log the query
+	fmt.Printf("Inserting token for user: %s, token_hash: %s\n", userEmail, token_hash)
+
+	_, err := s.db.ExecContext(ctx, query, userEmail, token_hash, stored_fp, expiresAt)
 	if err != nil {
+		fmt.Println("Error inserting token:", err) // Log any errors
 		return err
 	}
 	return nil
 }
 
 // GetRefreshTokens retrieves all refresh tokens for a user
-func (s *TokenStore) GetRefreshTokens(ctx context.Context, userEmail string) ([]RefreshToken, error) {
+func (s *TokenStore) GetRefreshTokens(ctx context.Context, userEmail string) ([]*RefreshToken, error) {
 	query := `
 	SELECT user_email, token_hash, stored_fp, expires_at
 	FROM refresh_tokens
@@ -62,7 +84,7 @@ func (s *TokenStore) GetRefreshTokens(ctx context.Context, userEmail string) ([]
 
 	defer rows.Close()
 
-	var tokens []RefreshToken
+	var refreshTokens []*RefreshToken
 
 	if err := rows.Err(); err != nil {
 		fmt.Println("No refesh tokens found")
@@ -78,8 +100,37 @@ func (s *TokenStore) GetRefreshTokens(ctx context.Context, userEmail string) ([]
 			&token.ExpiresAt); err != nil {
 			return nil, err
 		}
-		tokens = append(tokens, token)
+		refreshTokens = append(refreshTokens, &token)
 	}
 
-	return tokens, nil
+	return refreshTokens, nil
+}
+
+// GetByTokenHash retrieves a refresh token by its hash
+
+func (s *TokenStore) GetByRefreshTokenHash(ctx context.Context, tokenHash string) (*RefreshToken, error) {
+	query := `
+    SELECT user_email, token_hash, stored_fp, expires_at
+    FROM refresh_tokens
+    WHERE token_hash = $1
+    `
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration) // Ensure timeout duration is defined
+	defer cancel()
+
+	row := s.db.QueryRowContext(ctx, query, tokenHash)
+
+	var token RefreshToken
+	// Scan the result
+	if err := row.Scan(
+		&token.UserEmail,
+		&token.TokenHash,
+		&token.StoredFP,
+		&token.ExpiresAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.New("refresh token not found") // Graceful error handling
+		}
+		return nil, err
+	}
+
+	return &token, nil
 }

@@ -8,12 +8,15 @@ import (
 
 // Config holds all application configurations
 type Config struct {
-	Addr   string
-	Db     DBConfig
-	Env    string
-	ApiURL string
-	Mail   MailConfig
-	Auth   AuthConfig
+	Addr          string
+	Db            DBConfig
+	Env           string
+	ApiURL        string
+	HttpsEnabled  bool
+	HttpsKeyFile  string
+	HttpsCertFile string
+	Mail          MailConfig
+	Auth          AuthConfig
 }
 
 // AuthConfig contains authentication-related settings
@@ -53,8 +56,11 @@ type DBConfig struct {
 // Load initializes the configuration by fetching values from environment variables
 func Load() Config {
 	return Config{
-		Addr:   env.GetString("ADDR", ":8080"),
-		ApiURL: env.GetString("EXTERNAL_URL", "localhost:8080"),
+		Addr:          env.GetString("ADDR", ":8080"),
+		ApiURL:        env.GetString("EXTERNAL_URL", "localhost:8080"),
+		HttpsEnabled:  env.GetBool("HTTPS_ENABLED", false),
+		HttpsKeyFile:  env.GetString("HTTPS_KEY_FILE", ""),
+		HttpsCertFile: env.GetString("HTTPS_CERT_FILE", ""),
 		Db: DBConfig{
 			Addr:         env.GetString("DB_ADDR", "postgres://admin:adminpassword@localhost:5432/shotseek?sslmode=disable"),
 			MaxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),

@@ -11,6 +11,7 @@ import (
 	"github.com/michaelhoman/ShotSeek/docs" // This is required to run Swagger Docs
 	"github.com/michaelhoman/ShotSeek/internal/auth"
 	"github.com/michaelhoman/ShotSeek/internal/config"
+	"github.com/michaelhoman/ShotSeek/internal/env"
 	"github.com/michaelhoman/ShotSeek/internal/mailer"
 	int_middleware "github.com/michaelhoman/ShotSeek/internal/middleware"
 	"github.com/michaelhoman/ShotSeek/internal/store"
@@ -26,6 +27,7 @@ type application struct {
 	mailer     mailer.Client
 	jwtService *auth.JWTService
 	jwtAuth    *auth.JWTAuth
+	auth       *auth.AuthHandler
 }
 
 //	type config struct {
@@ -127,6 +129,8 @@ func (app *application) mount() http.Handler {
 			r.Post("/register", authHandler.RegisterUserHandler)
 			r.Post("/login", authHandler.LoginHandler)
 			r.Post("/logout", authHandler.LogoutHandler)
+			r.Post("/refresh", authHandler.RefreshHandler)
+
 			//r.Post("/logout", app.logoutHandler)
 		})
 
@@ -150,6 +154,24 @@ func (app *application) run(mux http.Handler) error {
 		ReadTimeout:  time.Second * 10,
 		IdleTimeout:  time.Minute,
 	}
-	utils.Logger.Info("Server has started at ", "ADDR", app.config.Addr, "ENV", app.config.Env)
-	return srv.ListenAndServe()
+
+	// Use the proper certificate and key paths for your server
+	httpsEnabled := env.GetBool("HTTPS_ENABLED", false)
+
+	certFile := env.GetString("HTTPS_CERT_PATH", ".keys/https/localhost.crt") // Your certificate file
+	keyFile := env.GetString("HTTPS_KEY_PATH", ".keys/https/localhost.key")   // Your private key file
+
+	utils.Logger.Info("Cert file path:", certFile)
+	utils.Logger.Info("Key file path:", keyFile)
+
+	if httpsEnabled {
+		utils.Logger.Info("Server has started at ", "ADDR", app.config.Addr, "ENV", app.config.Env, "HTTPS enabled")
+		return srv.ListenAndServeTLS(certFile, keyFile)
+	} else {
+		utils.Logger.Info("Server has started at ", "ADDR: ", app.config.Addr, " ENV: ", app.config.Env, " HTTPS disabled")
+		return srv.ListenAndServe()
+	}
+
+	// utils.Logger.Info("Server has started at ", "ADDR", app.config.Addr, "ENV", app.config.Env)
+	// return srv.ListenAndServe()
 }
