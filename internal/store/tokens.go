@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -44,23 +45,41 @@ func (s *TokenStore) GetRefreshTokens(ctx context.Context, userEmail string) ([]
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	rows, err := s.db.QueryContext(ctx, query, userEmail)
+	fmt.Println("1* GetRefreshTokens query: ", query)
+
+	rows, err := s.db.QueryContext(
+		ctx,
+		query,
+		userEmail,
+	)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("2* GetRefreshTokens rows: ", rows)
+
+	fmt.Println()
+
 	defer rows.Close()
 
 	var tokens []RefreshToken
+
+	if err := rows.Err(); err != nil {
+		fmt.Println("No refesh tokens found")
+		return nil, err
+	}
+
 	for rows.Next() {
 		var token RefreshToken
-		if err := rows.Scan(&token.UserEmail, &token.TokenHash, &token.StoredFP, &token.ExpiresAt); err != nil {
+		if err := rows.Scan(
+			&token.UserEmail,
+			&token.TokenHash,
+			&token.StoredFP,
+			&token.ExpiresAt); err != nil {
 			return nil, err
 		}
 		tokens = append(tokens, token)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
 	return tokens, nil
 }

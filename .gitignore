@@ -1,1 +1,3 @@
 .envrc
+bin/main
+bin/build-errors.log
