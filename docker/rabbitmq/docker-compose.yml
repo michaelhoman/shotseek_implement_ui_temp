@@ -1,0 +1,22 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4-management  # Use the latest RabbitMQ 4.x image with management plugin
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"      # RabbitMQ default communication port
+      - "15672:15672"    # RabbitMQ management web UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/mnesia  # Persist RabbitMQ data
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=shotseek  # Set your default username and password
+    networks:
+      - rabbitmq_net  # Use a custom network for isolation and future-proofing
+    restart: always  # Automatically restart the container if it stops unexpectedly
+
+volumes:
+  rabbitmq_data:  # Docker volume for persistence across restarts
+
+networks:
+  rabbitmq_net:  # Define a custom network for better control
+    driver: bridge  # Explicitly using the default bridge network driver
