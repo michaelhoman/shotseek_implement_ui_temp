@@ -350,11 +350,6 @@ func getUserFromCtx(r *http.Request) *store.User {
 	return user
 }
 
-func getLocationFromCtx(r *http.Request) *store.Location {
-	location, _ := r.Context().Value(userCtx).(*store.Location)
-	return location
-}
-
 func convertToUUID(idParam string) (uuid.UUID, error) {
 	id, err := uuid.Parse(idParam)
 	if err != nil {

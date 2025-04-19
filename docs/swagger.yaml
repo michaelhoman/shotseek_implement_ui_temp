@@ -1,24 +1,5 @@
 basePath: /v1
 definitions:
-  api.Address:
-    properties:
-      city:
-        type: string
-      country:
-        type: string
-      country_code:
-        type: string
-      county:
-        type: string
-      postcode:
-        type: string
-      state:
-        type: string
-      town:
-        type: string
-      village:
-        type: string
-    type: object
   api.CreateCommentPayload:
     properties:
       content:
@@ -43,35 +24,6 @@ definitions:
     required:
     - content
     - title
-    type: object
-  api.NominatimResult:
-    properties:
-      address:
-        $ref: '#/definitions/api.Address'
-      boundingbox:
-        items:
-          type: string
-        type: array
-      class:
-        type: string
-      display_name:
-        type: string
-      importance:
-        type: number
-      lat:
-        type: string
-      license:
-        type: string
-      lon:
-        type: string
-      osm_id:
-        type: string
-      osm_type:
-        type: string
-      place_id:
-        type: integer
-      type:
-        type: string
     type: object
   api.UpdatePostPayload:
     properties:
@@ -156,11 +108,8 @@ definitions:
     - email
     - first_name
     - last_name
-    - latitude
-    - longitude
     - password
     - state
-    - street
     - zip_code
     type: object
   github_com_michaelhoman_ShotSeek_internal_store.Comment:
@@ -233,6 +182,10 @@ definitions:
       city:
         type: string
       country:
+        type: string
+      country_code:
+        type: string
+      county:
         type: string
       id:
         type: integer
@@ -402,7 +355,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.NominatimResult'
+            $ref: '#/definitions/store.Location'
         "400":
           description: Bad Request
           schema: {}

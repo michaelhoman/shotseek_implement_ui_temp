@@ -6,7 +6,9 @@ CREATE TABLE locations (
     city VARCHAR(100) NOT NULL,
     state VARCHAR(50),  -- Can be ENUM for US states
     zip_code VARCHAR(10) NOT NULL,
+    county VARCHAR(100),  -- Optional for more detailed location
     country VARCHAR(50) NOT NULL DEFAULT 'USA',
+    country_code VARCHAR(3) NOT NULL DEFAULT 'USA',  -- ISO 3166-1 alpha-3 code
     latitude DECIMAL(9,6),  -- For geolocation-based searches
     longitude DECIMAL(9,6),  -- For geolocation-based searches
     is_precise BOOLEAN DEFAULT FALSE,  -- Indicates if the location is precise

@@ -22,13 +22,13 @@ type RegisterUserPayload struct {
 	Password  string  `json:"password" validate:"required,min=8,max=72"`
 	FirstName string  `json:"first_name" validate:"required,max=255"`
 	LastName  string  `json:"last_name" validate:"required,max=255"`
-	Street    string  `json:"street" validate:"required,max=255"`
+	Street    string  `json:"street" validate:"max=255"`
 	City      string  `json:"city" validate:"required,max=255"`
 	State     string  `json:"state" validate:"required,max=255"`
 	Zipcode   string  `json:"zip_code" validate:"required,max=12"`
 	Country   string  `json:"country" validate:"required,max=255"`
-	Latitude  float64 `json:"latitude" validate:"required,max=255"`
-	Longitude float64 `json:"longitude" validate:"required,max=255"`
+	Latitude  float64 `json:"latitude" validate:"max=255"`
+	Longitude float64 `json:"longitude" validate:"max=255"`
 }
 
 type LoginPayload struct {

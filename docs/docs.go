@@ -247,7 +247,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.NominatimResult"
+                            "$ref": "#/definitions/store.Location"
                         }
                     },
                     "400": {
@@ -855,35 +855,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.Address": {
-            "type": "object",
-            "properties": {
-                "city": {
-                    "type": "string"
-                },
-                "country": {
-                    "type": "string"
-                },
-                "country_code": {
-                    "type": "string"
-                },
-                "county": {
-                    "type": "string"
-                },
-                "postcode": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string"
-                },
-                "town": {
-                    "type": "string"
-                },
-                "village": {
-                    "type": "string"
-                }
-            }
-        },
         "api.CreateCommentPayload": {
             "type": "object",
             "required": [
@@ -917,50 +888,6 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "maxLength": 100
-                }
-            }
-        },
-        "api.NominatimResult": {
-            "type": "object",
-            "properties": {
-                "address": {
-                    "$ref": "#/definitions/api.Address"
-                },
-                "boundingbox": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "class": {
-                    "type": "string"
-                },
-                "display_name": {
-                    "type": "string"
-                },
-                "importance": {
-                    "type": "number"
-                },
-                "lat": {
-                    "type": "string"
-                },
-                "license": {
-                    "type": "string"
-                },
-                "lon": {
-                    "type": "string"
-                },
-                "osm_id": {
-                    "type": "string"
-                },
-                "osm_type": {
-                    "type": "string"
-                },
-                "place_id": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
                 }
             }
         },
@@ -1033,11 +960,8 @@ const docTemplate = `{
                 "email",
                 "first_name",
                 "last_name",
-                "latitude",
-                "longitude",
                 "password",
                 "state",
-                "street",
                 "zip_code"
             ],
             "properties": {
@@ -1193,6 +1117,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "country": {
+                    "type": "string"
+                },
+                "country_code": {
+                    "type": "string"
+                },
+                "county": {
                     "type": "string"
                 },
                 "id": {

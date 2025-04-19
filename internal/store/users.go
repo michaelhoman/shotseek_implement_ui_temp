@@ -104,6 +104,8 @@ func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User, location
 			fmt.Println("Location already exists, using existing location ID")
 			locationID = submittedLocation.ID
 		} else {
+			// Location does not exist, first query Nominatim API and then insert new location into locations table
+
 			fmt.Println("Location does not exist, inserting new location")
 			// locationID = submittedLocation.ID
 

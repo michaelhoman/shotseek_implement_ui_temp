@@ -14,6 +14,7 @@ import (
 	"github.com/michaelhoman/ShotSeek/internal/env"
 	"github.com/michaelhoman/ShotSeek/internal/mailer"
 	int_middleware "github.com/michaelhoman/ShotSeek/internal/middleware"
+	"github.com/michaelhoman/ShotSeek/internal/service"
 	"github.com/michaelhoman/ShotSeek/internal/store"
 	"github.com/michaelhoman/ShotSeek/internal/utils"
 
@@ -22,12 +23,13 @@ import (
 )
 
 type application struct {
-	config     config.Config
-	store      store.Storage
-	mailer     mailer.Client
-	jwtService *auth.JWTService
-	jwtAuth    *auth.JWTAuth
-	auth       *auth.AuthHandler
+	config          config.Config
+	store           store.Storage
+	mailer          mailer.Client
+	jwtService      *auth.JWTService
+	jwtAuth         *auth.JWTAuth
+	auth            *auth.AuthHandler
+	locationService *service.LocationService
 }
 
 //	type config struct {

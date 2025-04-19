@@ -53,6 +53,7 @@ type Storage struct {
 		Create(context.Context, *sql.Tx, *Location) (Location, error)
 		Get(context.Context, int64) (Location, error)
 		GetByLocation(context.Context, *Location) (Location, error)
+		GetGeneralLocationByZip(ctx context.Context, zipCode string) (Location, error)
 	}
 }
 

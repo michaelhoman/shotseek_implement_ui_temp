@@ -8,14 +8,16 @@ import (
 )
 
 type Location struct {
-	ID        int64   `json:"id"`
-	Street    string  `json:"street"`
-	City      string  `json:"city"`
-	State     string  `json:"state"`
-	ZIPCode   string  `json:"zip_code"`
-	Country   string  `json:"country"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	ID          int64   `json:"id"`
+	Street      string  `json:"street"`
+	City        string  `json:"city"`
+	State       string  `json:"state"`
+	County      string  `json:"county"`
+	ZIPCode     string  `json:"zip_code"`
+	Country     string  `json:"country"`
+	CountryCode string  `json:"country_code"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
 }
 
 type LocationStore struct {
@@ -30,15 +32,15 @@ func (s *LocationStore) Create(ctx context.Context, tx *sql.Tx, location *Locati
 	var query string
 	if location.Street == "" {
 		query = `
-		INSERT INTO locations (street, city, state, zip_code, country, latitude, longitude, is_precise)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, "FALSE")
+		INSERT INTO locations (street, city, state, county, zip_code, country, country_code, latitude, longitude, is_precise)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)
 		RETURNING id
 	`
 
 	} else {
 		query = `
-		INSERT INTO locations (street, city, state, zip_code, country, latitude, longitude, is_precise)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, "TRUE")
+		INSERT INTO locations (street, city, state, county, zip_code, country, country_code, latitude, longitude, is_precise)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
 		RETURNING id
 	`
 
@@ -51,8 +53,10 @@ func (s *LocationStore) Create(ctx context.Context, tx *sql.Tx, location *Locati
 		location.Street,
 		location.City,
 		location.State,
+		location.County,
 		location.ZIPCode,
 		location.Country,
+		location.CountryCode,
 		location.Latitude,
 		location.Longitude,
 	).Scan(&id)
@@ -153,7 +157,7 @@ func (s *LocationStore) GetByLocationPrecise(ctx context.Context, location *Loca
 	query := `
 		SELECT id, street, city, state, zip_code, country, latitude, longitude
 		FROM locations
-		WHERE is_precise="TRUE" AND street = $1 AND city = $2 AND state = $3 AND zip_code = $4 AND country = $5
+		WHERE is_precise=true AND street = $1 AND city = $2 AND state = $3 AND zip_code = $4 AND country = $5
 	`
 	var loc Location
 	err := s.db.QueryRowContext(ctx, query,
@@ -190,7 +194,7 @@ func (s *LocationStore) GetByLocation(ctx context.Context, location *Location) (
 	query := `
 		SELECT id, street, city, state, zip_code, country, latitude, longitude
 		FROM locations
-		WHERE is_precise = "FALSE" AND street = $1 AND city = $2 AND state = $3 AND zip_code = $4 AND country = $5
+		WHERE is_precise = false AND street = $1 AND city = $2 AND state = $3 AND zip_code = $4 AND country = $5
 	`
 	var loc Location
 	err := s.db.QueryRowContext(ctx, query,
@@ -227,4 +231,86 @@ func (l *Location) Normalize() {
 	l.State = strings.ToUpper(l.State)
 	l.ZIPCode = strings.ToUpper(l.ZIPCode)
 	l.Country = strings.ToUpper(l.Country)
+}
+
+func (s *LocationStore) GetGeneralLocationByZip(ctx context.Context, zipCode string) (Location, error) {
+	// Start of the function, print the input
+	fmt.Println("GetGeneralLocationByZip called with zipCode:", zipCode)
+
+	query := `
+		SELECT id, street, city, state, county, zip_code, country, country_code, latitude, longitude
+		FROM locations
+		WHERE zip_code = $1 AND is_precise = false
+	`
+	// Log the query for debugging
+	fmt.Println("Executing query:", query)
+
+	var loc Location
+	// Execute the query and scan the result into the Location struct
+	err := s.db.QueryRowContext(ctx, query, zipCode).Scan(
+		&loc.ID,
+		&loc.Street,
+		&loc.City,
+		&loc.State,
+		&loc.County,
+		&loc.ZIPCode,
+		&loc.Country,
+		&loc.CountryCode,
+		&loc.Latitude,
+		&loc.Longitude,
+	)
+
+	if err != nil {
+		// Log the error in case of failure
+		fmt.Println("Error during QueryRowContext execution:", err)
+
+		// Specific handling for no rows found
+		if err == sql.ErrNoRows {
+			fmt.Println("\n\n--GetGeneralLocationByZip--\n\nNo location found for zipCode:", zipCode)
+			return Location{}, sql.ErrNoRows
+		}
+
+		// Log the error for other types of database failures
+		fmt.Println("Error executing query:", err)
+		return Location{}, fmt.Errorf("getting location: %w", err)
+	}
+
+	// Log the result for debugging
+	fmt.Println("Location found:", loc)
+
+	return loc, nil
+}
+
+// func (s *LocationStore) GetGeneralLocationByZip(ctx context.Context, zipCode string) (Location, error) {
+
+// 	query := `
+// 		SELECT id, street, city, state, county, zip_code, country, country_code, latitude, longitude
+// 		FROM locations
+// 		WHERE zip_code = $1 AND is_precise = false
+// 	`
+
+// 	var loc Location
+// 	err := s.db.QueryRowContext(ctx, query, zipCode).Scan(
+// 		&loc.ID,
+// 		&loc.Street,
+// 		&loc.City,
+// 		&loc.State,
+// 		&loc.County,
+// 		&loc.ZIPCode,
+// 		&loc.Country,
+// 		&loc.CountryCode,
+// 		&loc.Latitude,
+// 		&loc.Longitude,
+// 	)
+// 	if err != nil {
+// 		if err == sql.ErrNoRows {
+// 			return Location{}, fmt.Errorf("location not found")
+// 		}
+// 		return Location{}, fmt.Errorf("getting location: %w", err)
+// 	}
+// 	return loc, nil
+// }
+
+func (s *LocationStore) DB() *sql.DB {
+	return s.db
 }
