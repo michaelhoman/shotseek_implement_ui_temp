@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+
 	// store "github.com/michaelhoman/ShotSeek/internal/store/postgres"
 
 	"github.com/michaelhoman/ShotSeek/internal/store"
@@ -14,8 +16,10 @@ import (
 )
 
 type userKey string
+type locationKey string
 
 const userCtx userKey = "user"
+const locationCtx locationKey = "location"
 
 type CreateUserPayload struct {
 	Email string `json:"email" validate:"required,email"`
@@ -92,21 +96,42 @@ type UpdateUserPayload struct {
 
 // GetUser godoc
 //
-//	@Summary		Fetches a user
-//	@Description	Fetches a user by ID
+//	@Summary		Fetches a user by ID string/uuid
+//	@Description	Fetches a user by ID string/uuid
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Param			id	path		int	true	"User ID"
+//	@Param			id	path		string	true	"User ID"
 //	@Success		200	{object}	store.User
 //	@Failure		400	{object}	error
 //	@Failure		404	{object}	error
 //	@Failure		500	{object}	error
 //	@Security		ApiKeyAuth
 //	@Router			/users/{id} [get]
-func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) getUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromCtx(r)
 
+	if err := utils.JsonResponse(w, http.StatusOK, user); err != nil {
+		utils.InternalServerError(w, r, err)
+		return
+	}
+}
+
+// GetCurrentUser godoc
+//
+//	@Summary		Fetches the current user
+//	@Description	Fetches the current user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	store.User
+//	@Failure		400	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/ [get]
+func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromCtx(r)
 	if err := utils.JsonResponse(w, http.StatusOK, user); err != nil {
 		utils.InternalServerError(w, r, err)
 		return
@@ -130,7 +155,7 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 //	@Router			/users/{id} [patch]
 func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromCtx(r)
-
+	location := getLocationFromCtx(r)
 	var payload UpdateUserPayload
 	if err := utils.ReadJSON(w, r, &payload); err != nil {
 		utils.BadRequestResponse(w, r, err)
@@ -157,19 +182,19 @@ func (app *application) updateUserHandler(w http.ResponseWriter, r *http.Request
 		user.LastName = *payload.LastName
 	}
 	if payload.Zipcode != nil {
-		user.Zipcode = *payload.Zipcode
+		location.ZIPCode = *payload.Zipcode
 	}
 	if payload.City != nil {
-		user.City = *payload.City
+		location.City = *payload.City
 	}
 	if payload.State != nil {
-		user.State = *payload.State
+		location.State = *payload.State
 	}
 
 	ctx := r.Context()
 
 	usersStore := app.store.Users
-	if err := usersStore.Update(ctx, user); err != nil {
+	if err := usersStore.Update(ctx, user, location); err != nil {
 		utils.InternalServerError(w, r, err)
 		return
 	}
@@ -210,15 +235,15 @@ func (app *application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Param			token	query		string	true	"Invitation token"
+//	@Param			token	path		string	true	"Invitation token"
 //	@Success		204		{string}	string	"User activated"
 //	@Failure		400		{object}	error
 //	@Failure		404		{object}	error
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
-//	@Router			/users/activate/{token} [put]
+//	@Router			/authentication/activate/{token} [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
-	token := r.URL.Query().Get("token")
+	token := chi.URLParam(r, "token") // Get token from path
 
 	err := app.store.Users.Activate(r.Context(), token)
 	if err != nil {
@@ -234,14 +259,26 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	if err := utils.JsonResponse(w, http.StatusNoContent, "User activated"); err != nil {
 		utils.InternalServerError(w, r, err)
 	}
+}
 
-	w.WriteHeader(http.StatusNoContent)
+func (app *application) getUserLocationHandler(w http.ResponseWriter, r *http.Request) {
+	location := getLocationFromCtx(r)
+
+	if err := utils.JsonResponse(w, http.StatusOK, location); err != nil {
+		utils.InternalServerError(w, r, err)
+		return
+	}
 }
 
 func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		idParam := chi.URLParam(r, "userID")
-		id, err := strconv.ParseInt(idParam, 10, 64)
+		id, err := convertToUUID(idParam)
+		if err != nil {
+			fmt.Println("Error parsing UUID:", err)
+		} else {
+			fmt.Println("Parsed UUID:", id)
+		}
 
 		if err != nil {
 			utils.InternalServerError(w, r, err)
@@ -266,7 +303,64 @@ func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (app *application) currentUserContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Step 1: Extract token from Authorization header
+		tokenStr, err := utils.ExtractBearerToken(r)
+		if err != nil {
+			utils.BadRequestResponse(w, r, fmt.Errorf("missing or malformed Authorization header"))
+			return
+		}
+
+		// Step 2: Decode and validate token
+		claims, err := utils.DecodeJWT(tokenStr, app.jwtAuth.PublicKey)
+		if err != nil {
+			utils.BadRequestResponse(w, r, fmt.Errorf("invalid token: %w", err))
+			return
+		}
+
+		// Step 3: Extract user ID from `sub` claim
+		sub, ok := claims["sub"].(string)
+		if !ok || sub == "" {
+			utils.BadRequestResponse(w, r, errors.New("missing or invalid subject claim"))
+			return
+		}
+
+		userID, err := uuid.Parse(sub)
+		if err != nil {
+			utils.BadRequestResponse(w, r, errors.New("invalid user ID format in token"))
+			return
+		}
+
+		// Step 4: Fetch user from DB
+		user, err := app.store.Users.GetByID(r.Context(), userID)
+		if err != nil {
+			utils.InternalServerError(w, r, fmt.Errorf("failed to load user: %w", err))
+			return
+		}
+
+		// Step 5: Add user to context and continue
+		ctx := context.WithValue(r.Context(), userCtx, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func getUserFromCtx(r *http.Request) *store.User {
 	user, _ := r.Context().Value(userCtx).(*store.User)
 	return user
 }
+
+func getLocationFromCtx(r *http.Request) *store.Location {
+	location, _ := r.Context().Value(userCtx).(*store.Location)
+	return location
+}
+
+func convertToUUID(idParam string) (uuid.UUID, error) {
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		return uuid.Nil, err // Return nil UUID on error
+	}
+	return id, nil
+}
+
+// In your handler file, e.g., location.go or debug.go

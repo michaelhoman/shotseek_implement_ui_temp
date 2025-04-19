@@ -5,11 +5,6 @@ To access your Postgres DB instance, run the following command in your terminal
 
 `docker exec -it shotseek-db-1 psql -U admin -d shotseek`
 
-
-
-
-
-
 ### Generate localhost https certs for dev
 ```bash
 openssl req -new -x509 -keyout .keys/https/localhost.key -out .keys/https/localhost.crt -days 365 -nodes -config .keys/https/openssl.cnf
@@ -65,3 +60,13 @@ awk -F'\t' 'BEGIN {OFS=","} {
 ```postgres
 \i /path/to/final_sql.sql
 ```
+
+
+# RabbitMQ
+#### IN PROGRESS
+
+To maybe share queues and such
+```
+docker run --rm -v rabbitmq_rabbitmq_data:/data -v $(pwd):/backup alpine tar czf /backup/rabbitmq_backup.tar.gz -C /data .
+```
+

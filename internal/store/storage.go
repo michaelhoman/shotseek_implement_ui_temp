@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -24,11 +26,15 @@ type Storage struct {
 		// create(context.Context, *sql.Tx, *User) error
 		Activate(context.Context, string) error
 		GetByEmail(context.Context, string) (*User, error)
-		GetByID(context.Context, int64) (*User, error)
-		Create(context.Context, *sql.Tx, *User) error
-		Update(context.Context, *User) error
-		Delete(context.Context, int64) error
-		CreateAndInvite(context.Context, *User, string, time.Duration) error
+		GetByEmailWithPassword(context.Context, string) (*User, error)
+		GetByID(context.Context, uuid.UUID) (*User, error)
+		Create(context.Context, *sql.Tx, *User, *Location) error
+		update(context.Context, *sql.Tx, *User) error
+		Update(context.Context, *User, *Location) error
+		Delete(context.Context, uuid.UUID) error
+		CreateAndInvite(context.Context, *User, *Location, string, time.Duration) error
+		GetHashedPassword(context.Context, string) (string, error)
+		LocationStore() *LocationStore
 	}
 	Comments interface {
 		Create(context.Context, *Comment) error
@@ -39,18 +45,24 @@ type Storage struct {
 		DeleteByPostID(context.Context, int64) error
 	}
 	Tokens interface {
-		UpdateRefreshToken(ctx context.Context, userEmail, token string, stored_fp string, expiresAt time.Time) error
-		GetRefreshTokens(ctx context.Context, userEmail string) ([]*RefreshToken, error)
+		UpdateRefreshToken(ctx context.Context, userID uuid.UUID, token string, stored_fp string, expiresAt time.Time) error
+		GetRefreshTokens(ctx context.Context, userID uuid.UUID) ([]*RefreshToken, error)
 		GetByRefreshTokenHash(ctx context.Context, tokenHash string) (*RefreshToken, error)
+	}
+	Locations interface {
+		Create(context.Context, *sql.Tx, *Location) (Location, error)
+		Get(context.Context, int64) (Location, error)
+		GetByLocation(context.Context, *Location) (Location, error)
 	}
 }
 
 func NewPostgresStorage(db *sql.DB) Storage {
 	return Storage{
-		Posts:    &PostStore{db},
-		Users:    &UserStore{db},
-		Comments: &CommentsStore{db},
-		Tokens:   &TokenStore{db},
+		Posts:     &PostStore{db},
+		Users:     &UserStore{db, NewLocationStore(db)},
+		Comments:  &CommentsStore{db},
+		Tokens:    &TokenStore{db},
+		Locations: &LocationStore{db},
 	}
 }
 

@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE images (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE, -- Owner of the image
+    user_id uuid REFERENCES users(id) ON DELETE CASCADE, -- Owner of the image
     file_url VARCHAR NOT NULL, -- URL of the stored image
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );

@@ -78,7 +78,7 @@ func Load() Config {
 			},
 			Token: TokenConfig{
 				Secret: env.GetString("JWT_SIGNING_KEY", "example"),
-				Exp:    time.Minute * 6, // 6 minutes
+				Exp:    time.Minute * 60, // 60 minute
 				Iss:    "shotseek-auth-service",
 				Aud:    "shotseek-api",
 			},

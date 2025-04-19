@@ -24,6 +24,55 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/authentication/activate/{token}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Activates a user by invitation token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Activates a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "User activated",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/authentication/login": {
             "post": {
                 "description": "Login a user",
@@ -50,7 +99,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Login successful, JWT stored in cookie",
+                        "description": "updated Login successful, JWT stored in cookie",
                         "schema": {
                             "type": "string"
                         }
@@ -103,7 +152,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Refresh the JWT token",
+                "summary": "Refresh the JWT token via valid Refresh token",
                 "responses": {
                     "200": {
                         "description": "JWT refreshed successfully",
@@ -155,6 +204,58 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/locations/zip/{ZIPCode}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lookup location by ZIP code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "Lookup location by ZIP code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ZIP code",
+                        "name": "ZIPCode",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.NominatimResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {}
                     },
                     "500": {
@@ -571,14 +672,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/activate/{token}": {
-            "put": {
+        "/users/": {
+            "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Activates a user by invitation token",
+                "description": "Fetches the current user",
                 "consumes": [
                     "application/json"
                 ],
@@ -588,21 +689,12 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Activates a user",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Invitation token",
-                        "name": "token",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
+                "summary": "Fetches the current user",
                 "responses": {
-                    "204": {
-                        "description": "User activated",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/github_com_michaelhoman_ShotSeek_internal_store.User"
                         }
                     },
                     "400": {
@@ -627,7 +719,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Fetches a user by ID",
+                "description": "Fetches a user by ID string/uuid",
                 "consumes": [
                     "application/json"
                 ],
@@ -637,10 +729,10 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Fetches a user",
+                "summary": "Fetches a user by ID string/uuid",
                 "parameters": [
                     {
-                        "type": "integer",
+                        "type": "string",
                         "description": "User ID",
                         "name": "id",
                         "in": "path",
@@ -763,6 +855,35 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.Address": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "country_code": {
+                    "type": "string"
+                },
+                "county": {
+                    "type": "string"
+                },
+                "postcode": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "town": {
+                    "type": "string"
+                },
+                "village": {
+                    "type": "string"
+                }
+            }
+        },
         "api.CreateCommentPayload": {
             "type": "object",
             "required": [
@@ -796,6 +917,50 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "maxLength": 100
+                }
+            }
+        },
+        "api.NominatimResult": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/api.Address"
+                },
+                "boundingbox": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "class": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "importance": {
+                    "type": "number"
+                },
+                "lat": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
+                "lon": {
+                    "type": "string"
+                },
+                "osm_id": {
+                    "type": "string"
+                },
+                "osm_type": {
+                    "type": "string"
+                },
+                "place_id": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -864,15 +1029,23 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "city",
+                "country",
                 "email",
                 "first_name",
                 "last_name",
+                "latitude",
+                "longitude",
                 "password",
                 "state",
+                "street",
                 "zip_code"
             ],
             "properties": {
                 "city": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "country": {
                     "type": "string",
                     "maxLength": 255
                 },
@@ -887,12 +1060,24 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255
                 },
+                "latitude": {
+                    "type": "number",
+                    "maximum": 255
+                },
+                "longitude": {
+                    "type": "number",
+                    "maximum": 255
+                },
                 "password": {
                     "type": "string",
                     "maxLength": 72,
                     "minLength": 8
                 },
                 "state": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "street": {
                     "type": "string",
                     "maxLength": 255
                 },
@@ -969,9 +1154,6 @@ const docTemplate = `{
         "github_com_michaelhoman_ShotSeek_internal_store.User": {
             "type": "object",
             "properties": {
-                "city": {
-                    "type": "string"
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -982,7 +1164,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "is_active": {
                     "type": "boolean"
@@ -990,14 +1172,43 @@ const docTemplate = `{
                 "last_name": {
                     "type": "string"
                 },
-                "state": {
-                    "type": "string"
+                "location": {
+                    "$ref": "#/definitions/store.Location"
+                },
+                "location_id": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
                 },
                 "version": {
                     "type": "integer"
+                }
+            }
+        },
+        "store.Location": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "street": {
+                    "type": "string"
                 },
                 "zip_code": {
                     "type": "string"

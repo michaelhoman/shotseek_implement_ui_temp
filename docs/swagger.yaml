@@ -1,5 +1,24 @@
 basePath: /v1
 definitions:
+  api.Address:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      country_code:
+        type: string
+      county:
+        type: string
+      postcode:
+        type: string
+      state:
+        type: string
+      town:
+        type: string
+      village:
+        type: string
+    type: object
   api.CreateCommentPayload:
     properties:
       content:
@@ -24,6 +43,35 @@ definitions:
     required:
     - content
     - title
+    type: object
+  api.NominatimResult:
+    properties:
+      address:
+        $ref: '#/definitions/api.Address'
+      boundingbox:
+        items:
+          type: string
+        type: array
+      class:
+        type: string
+      display_name:
+        type: string
+      importance:
+        type: number
+      lat:
+        type: string
+      license:
+        type: string
+      lon:
+        type: string
+      osm_id:
+        type: string
+      osm_type:
+        type: string
+      place_id:
+        type: integer
+      type:
+        type: string
     type: object
   api.UpdatePostPayload:
     properties:
@@ -72,6 +120,9 @@ definitions:
       city:
         maxLength: 255
         type: string
+      country:
+        maxLength: 255
+        type: string
       email:
         type: string
       first_name:
@@ -80,6 +131,12 @@ definitions:
       last_name:
         maxLength: 255
         type: string
+      latitude:
+        maximum: 255
+        type: number
+      longitude:
+        maximum: 255
+        type: number
       password:
         maxLength: 72
         minLength: 8
@@ -87,16 +144,23 @@ definitions:
       state:
         maxLength: 255
         type: string
+      street:
+        maxLength: 255
+        type: string
       zip_code:
         maxLength: 12
         type: string
     required:
     - city
+    - country
     - email
     - first_name
     - last_name
+    - latitude
+    - longitude
     - password
     - state
+    - street
     - zip_code
     type: object
   github_com_michaelhoman_ShotSeek_internal_store.Comment:
@@ -143,8 +207,6 @@ definitions:
     type: object
   github_com_michaelhoman_ShotSeek_internal_store.User:
     properties:
-      city:
-        type: string
       created_at:
         type: string
       email:
@@ -152,17 +214,36 @@ definitions:
       first_name:
         type: string
       id:
-        type: integer
+        type: string
       is_active:
         type: boolean
       last_name:
         type: string
-      state:
-        type: string
+      location:
+        $ref: '#/definitions/store.Location'
+      location_id:
+        type: integer
       updated_at:
         type: string
       version:
         type: integer
+    type: object
+  store.Location:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      id:
+        type: integer
+      latitude:
+        type: number
+      longitude:
+        type: number
+      state:
+        type: string
+      street:
+        type: string
       zip_code:
         type: string
     type: object
@@ -178,6 +259,38 @@ info:
   termsOfService: http://swagger.io/terms/
   title: ShotSeek API
 paths:
+  /authentication/activate/{token}:
+    put:
+      consumes:
+      - application/json
+      description: Activates a user by invitation token
+      parameters:
+      - description: Invitation token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User activated
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Activates a user
+      tags:
+      - users
   /authentication/login:
     post:
       consumes:
@@ -194,7 +307,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Login successful, JWT stored in cookie
+          description: updated Login successful, JWT stored in cookie
           schema:
             type: string
         "400":
@@ -241,7 +354,7 @@ paths:
         "500":
           description: Internal Server Error
           schema: {}
-      summary: Refresh the JWT token
+      summary: Refresh the JWT token via valid Refresh token
       tags:
       - users
   /authentication/register:
@@ -272,6 +385,39 @@ paths:
       summary: Registers a new user
       tags:
       - users
+  /locations/zip/{ZIPCode}:
+    get:
+      consumes:
+      - application/json
+      description: Lookup location by ZIP code
+      parameters:
+      - description: ZIP code
+        in: path
+        name: ZIPCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.NominatimResult'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      summary: Lookup location by ZIP code
+      tags:
+      - locations
   /posts:
     post:
       consumes:
@@ -539,6 +685,32 @@ paths:
       summary: Updates a comment
       tags:
       - comments
+  /users/:
+    get:
+      consumes:
+      - application/json
+      description: Fetches the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_michaelhoman_ShotSeek_internal_store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Fetches the current user
+      tags:
+      - users
   /users/{id}:
     delete:
       consumes:
@@ -566,13 +738,13 @@ paths:
     get:
       consumes:
       - application/json
-      description: Fetches a user by ID
+      description: Fetches a user by ID string/uuid
       parameters:
       - description: User ID
         in: path
         name: id
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:
@@ -591,7 +763,7 @@ paths:
           schema: {}
       security:
       - ApiKeyAuth: []
-      summary: Fetches a user
+      summary: Fetches a user by ID string/uuid
       tags:
       - users
     patch:
@@ -629,38 +801,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Updates a user
-      tags:
-      - users
-  /users/activate/{token}:
-    put:
-      consumes:
-      - application/json
-      description: Activates a user by invitation token
-      parameters:
-      - description: Invitation token
-        in: query
-        name: token
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: User activated
-          schema:
-            type: string
-        "400":
-          description: Bad Request
-          schema: {}
-        "404":
-          description: Not Found
-          schema: {}
-        "500":
-          description: Internal Server Error
-          schema: {}
-      security:
-      - ApiKeyAuth: []
-      summary: Activates a user
       tags:
       - users
 securityDefinitions:

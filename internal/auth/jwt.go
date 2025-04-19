@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/michaelhoman/ShotSeek/internal/config"
 	"github.com/michaelhoman/ShotSeek/internal/env"
 )
@@ -115,18 +116,18 @@ func loadPublicKey(path string) (*ecdsa.PublicKey, error) {
 }
 
 // Function to create JWT
-// func (a *AuthHandler) generateJWT(userID string, fingerprint string) (string, error) {
+// func (a *AuthHandler) GenerateJWT(userID string, fingerprint string) (string, error) {
 // 	// Get the secret key from the environment variable
 // 	jwtSigningKey := []byte(os.Getenv("JWT_SIGNING_KEY"))
 // 	// Set the expiration time (e.g., 1 hour from now)
-// 	expirationTime := time.Now().Add(a.config.Auth.Token.Exp).Unix()
+// 	expirationTime := time.Now().Add(a.Config.Auth.Token.Exp).Unix()
 
 // 	// Create the claims
 // 	claims := Claims{
 // 		Fingerprint: fingerprint, // Custom claim
 // 		RegisteredClaims: jwt.RegisteredClaims{
-// 			Issuer:    a.config.Auth.Token.Iss,
-// 			Audience:  jwt.ClaimStrings{a.config.Auth.Token.Aud},
+// 			Issuer:    a.Config.Auth.Token.Iss,
+// 			Audience:  jwt.ClaimStrings{a.Config.Auth.Token.Aud},
 // 			Subject:   userID,
 // 			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 // 			ExpiresAt: &jwt.NumericDate{Time: time.Unix(expirationTime, 0)},
@@ -144,8 +145,8 @@ func loadPublicKey(path string) (*ecdsa.PublicKey, error) {
 // 	return signedToken, nil
 // }
 
-func (a *AuthHandler) generateJWT(userID string, fingerprint string) (string, error) {
-	fmt.Println("Generating JWT for user:", userID) // TODO REMOVE Debugging
+func (a *AuthHandler) GenerateJWTWithFP(userID uuid.UUID, fingerprint string) (string, error) {
+	fmt.Println("321Generating JWT for user:", userID) // TODO REMOVE Debugging
 	// Load the private key for signing (this can be done using the method we defined earlier)
 
 	// privateKey, err := loadPrivateKey(a.JWTAuth.PrivateKey) // Path to your private key
@@ -154,15 +155,51 @@ func (a *AuthHandler) generateJWT(userID string, fingerprint string) (string, er
 	// }
 
 	// Set the expiration time (e.g., 1 hour from now)
-	expirationTime := time.Now().Add(a.config.Auth.Token.Exp).Unix()
+	expirationTime := time.Now().Add(a.Config.Auth.Token.Exp).Unix()
 
 	// Create the claims
 	claims := Claims{
 		Fingerprint: fingerprint, // Custom claim
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    a.config.Auth.Token.Iss,
-			Audience:  jwt.ClaimStrings{a.config.Auth.Token.Aud},
-			Subject:   userID,
+			Issuer:    a.Config.Auth.Token.Iss,
+			Audience:  jwt.ClaimStrings{a.Config.Auth.Token.Aud},
+			Subject:   userID.String(),
+			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
+			ExpiresAt: &jwt.NumericDate{Time: time.Unix(expirationTime, 0)},
+		},
+	}
+
+	// Create the token using ES256 algorithm
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	fmt.Println("Token created:", token) // TODO REMOVE Debugging
+
+	// Sign the token with your ECDSA private key
+	signedToken, err := token.SignedString(a.JWTAuth.PrivateKey)
+	fmt.Println("Signed token:", signedToken) // TODO REMOVE Debugging
+	if err != nil {
+		return "", fmt.Errorf("could not sign the token: %v", err)
+	}
+	return signedToken, nil
+}
+func (a *AuthHandler) GenerateJWT(userID uuid.UUID) (string, error) {
+
+	// Load the private key for signing (this can be done using the method we defined earlier)
+
+	// privateKey, err := loadPrivateKey(a.JWTAuth.PrivateKey) // Path to your private key
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to load private key: %v", err)
+	// }
+
+	// Set the expiration time (e.g., 1 hour from now)
+	expirationTime := time.Now().Add(a.Config.Auth.Token.Exp).Unix()
+
+	// Create the claims
+	claims := Claims{
+		Fingerprint: "", // Custom claim
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    a.Config.Auth.Token.Iss,
+			Audience:  jwt.ClaimStrings{a.Config.Auth.Token.Aud},
+			Subject:   userID.String(),
 			IssuedAt:  &jwt.NumericDate{Time: time.Now()},
 			ExpiresAt: &jwt.NumericDate{Time: time.Unix(expirationTime, 0)},
 		},
@@ -250,6 +287,7 @@ func (a *AuthHandler) ValidateFingerprint(r *http.Request, expectedHash string) 
 }
 
 func (a *AuthHandler) ValidateJWT(r *http.Request, tokenString, requestFingerprint string) (*Claims, error) {
+	fmt.Println("Validating JWT Called: tokenString:", tokenString, "\nrequestFingerprint: ", requestFingerprint) // TODO REMOVE Debugging
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate Algorithm
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
@@ -262,8 +300,8 @@ func (a *AuthHandler) ValidateJWT(r *http.Request, tokenString, requestFingerpri
 
 	},
 		jwt.WithExpirationRequired(),                                // Ensure expiration is required and checked
-		jwt.WithAudience(a.config.Auth.Token.Aud),                   // Validate audience
-		jwt.WithIssuer(a.config.Auth.Token.Iss),                     // Validate issuer
+		jwt.WithAudience(a.Config.Auth.Token.Aud),                   // Validate audience
+		jwt.WithIssuer(a.Config.Auth.Token.Iss),                     // Validate issuer
 		jwt.WithValidMethods([]string{jwt.SigningMethodES256.Name}), // Validate signing method
 	)
 
@@ -278,7 +316,7 @@ func (a *AuthHandler) ValidateJWT(r *http.Request, tokenString, requestFingerpri
 	}
 
 	// Validate Issuer
-	if claims.RegisteredClaims.Issuer != a.config.Auth.Token.Iss {
+	if claims.RegisteredClaims.Issuer != a.Config.Auth.Token.Iss {
 		return nil, fmt.Errorf("invalid token issuer")
 	}
 
@@ -336,7 +374,7 @@ func (a *AuthHandler) authenticateRequest(r *http.Request) (*Claims, error) {
 }
 
 // Generate a secure random refresh token
-func (a *AuthHandler) generateRefreshToken() (string, error) {
+func (a *AuthHandler) GenerateRefreshToken() (string, error) {
 	bytes := make([]byte, 32) // 256-bit token
 	_, err := rand.Read(bytes)
 	if err != nil {
@@ -346,13 +384,13 @@ func (a *AuthHandler) generateRefreshToken() (string, error) {
 }
 
 // Hash the refresh token for storage
-func (a *AuthHandler) hashToken(token string) string {
+func (a *AuthHandler) HashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return base64.StdEncoding.EncodeToString(hash[:]) // Store in DB
 }
 
-func (a *AuthHandler) ValidateRefreshToken(ctx context.Context, userEmail, refreshToken, clientFP string) bool {
-	storedTokens, err := a.store.Tokens.GetRefreshTokens(ctx, userEmail) // Fetch stored token and fingerprint                     // Hash the stored token for comparison
+func (a *AuthHandler) ValidateRefreshToken(ctx context.Context, userID uuid.UUID, refreshToken, clientFP string) bool {
+	storedTokens, err := a.store.Tokens.GetRefreshTokens(ctx, userID) // Fetch stored token and fingerprint                     // Hash the stored token for comparison
 	if err != nil {
 		return false
 	}
@@ -367,4 +405,14 @@ func (a *AuthHandler) ValidateRefreshToken(ctx context.Context, userEmail, refre
 
 	// No matching token found
 	return false
+}
+
+// Getter method for TokenExp
+func (a *AuthHandler) GetAuthTokenExpiration() time.Duration {
+	return a.Config.Auth.Token.Exp
+}
+
+// Getter method for TokenExp
+func (a *AuthHandler) GetRefreshTokenExpiration() time.Duration {
+	return a.Config.Auth.RefreshToken.Exp
 }

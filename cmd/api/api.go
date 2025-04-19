@@ -113,20 +113,29 @@ func (app *application) mount() http.Handler {
 		})
 
 		r.Route("/users", func(r chi.Router) {
-			//r.Post("/", app.createUserHandler)
+			// r.Post("/", app.createUserHandler)
 			r.Use(int_middleware.JwtMiddleware(authHandler))
-			r.Put("/activate/{token}", app.activateUserHandler)
+			r.Get("/", app.getCurrentUserHandler)
+			r.Route("/location", func(r chi.Router) {
+				r.Use(app.usersContextMiddleware)
+				r.Get("/", app.getUserLocationHandler)
+			})
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.usersContextMiddleware)
-				r.Get("/", app.getUserHandler)
+				r.Get("/", app.getUserByIDHandler)
 				r.Patch("/", app.updateUserHandler)
 				r.Delete("/", app.deleteUserHandler)
 			})
+		})
+		r.Route("/locations", func(r chi.Router) {
+			r.Use(int_middleware.JwtMiddleware(authHandler))
+			r.Get("/zip/{ZIPCode}", app.zipLookupHandler)
 		})
 
 		//public
 		r.Route("/authentication", func(r chi.Router) {
 			r.Post("/register", authHandler.RegisterUserHandler)
+			r.Put("/activate/{token}", app.activateUserHandler)
 			r.Post("/login", authHandler.LoginHandler)
 			r.Post("/logout", authHandler.LogoutHandler)
 			r.Post("/refresh", authHandler.RefreshHandler)

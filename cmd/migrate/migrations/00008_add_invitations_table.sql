@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS user_invitations (
   token bytea PRIMARY KEY,
   expires_at TIMESTAMP(0) WITH TIME ZONE NOT NULL,
-  user_id bigint NOT NULL
+  user_id uuid NOT NULL
 );
 -- +goose StatementEnd
 
