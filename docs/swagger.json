@@ -205,6 +205,60 @@
                 }
             }
         },
+        "/locations/zip/nearby/{ZIPCode}/{miles}": {
+            "get": {
+                "description": "Get nearby locations by ZIP code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "Get nearby locations by ZIP code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ZIP code",
+                        "name": "ZIPCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Distance in miles",
+                        "name": "miles",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/store.Location"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/locations/zip/{ZIPCode}": {
             "get": {
                 "security": [

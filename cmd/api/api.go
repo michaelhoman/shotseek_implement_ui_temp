@@ -132,6 +132,7 @@ func (app *application) mount() http.Handler {
 		r.Route("/locations", func(r chi.Router) {
 			r.Use(int_middleware.JwtMiddleware(authHandler))
 			r.Get("/zip/{ZIPCode}", app.zipLookupHandler)
+			r.Get("/zip/nearby/{ZIPCode}/{miles}", app.getNearbyByZipHandler) // Debugging - remove
 		})
 
 		//public

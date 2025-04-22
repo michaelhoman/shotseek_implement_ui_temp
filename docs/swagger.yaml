@@ -371,6 +371,43 @@ paths:
       summary: Lookup location by ZIP code
       tags:
       - locations
+  /locations/zip/nearby/{ZIPCode}/{miles}:
+    get:
+      consumes:
+      - application/json
+      description: Get nearby locations by ZIP code
+      parameters:
+      - description: ZIP code
+        in: path
+        name: ZIPCode
+        required: true
+        type: string
+      - description: Distance in miles
+        in: path
+        name: miles
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Location'
+            type: array
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get nearby locations by ZIP code
+      tags:
+      - locations
   /posts:
     post:
       consumes:

@@ -29,24 +29,27 @@ func NewLocationStore(db *sql.DB) *LocationStore {
 }
 
 func (s *LocationStore) Create(ctx context.Context, tx *sql.Tx, location *Location) (Location, error) {
+	fmt.Println("Create Location Started")    // Debugging line
+	fmt.Println("Location values:", location) // Debugging line
+
 	var query string
 	if location.Street == "" {
+		fmt.Println("Query is: Insert INTO locations", location.Street, location.City, location.State, location.County, location.ZIPCode, location) // Debugging line
 		query = `
-		INSERT INTO locations (street, city, state, county, zip_code, country, country_code, latitude, longitude, is_precise)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)
-		RETURNING id
-	`
-
+        INSERT INTO locations (street, city, state, county, zip_code, country, country_code, latitude, longitude, is_precise)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, false)
+        RETURNING id
+        `
 	} else {
 		query = `
-		INSERT INTO locations (street, city, state, county, zip_code, country, country_code, latitude, longitude, is_precise)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
-		RETURNING id
-	`
-
+        INSERT INTO locations (street, city, state, county, zip_code, country, country_code, latitude, longitude, is_precise)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+        RETURNING id
+        `
 	}
 
-	location.Normalize() // 👍 perfect place to normalize
+	location.Normalize()                                 // 👍 perfect place to normalize
+	fmt.Println("Normalized Location values:", location) // Debugging line
 
 	var id int64
 	err := tx.QueryRowContext(ctx, query,
@@ -61,9 +64,11 @@ func (s *LocationStore) Create(ctx context.Context, tx *sql.Tx, location *Locati
 		location.Longitude,
 	).Scan(&id)
 	if err != nil {
+		fmt.Println("Error executing query:", err) // Debugging line
 		return Location{}, fmt.Errorf("inserting location: %w", err)
 	}
 
+	fmt.Println("Location inserted with ID:", id) // Debugging line
 	location.ID = id
 	return *location, nil
 }
@@ -313,4 +318,44 @@ func (s *LocationStore) GetGeneralLocationByZip(ctx context.Context, zipCode str
 
 func (s *LocationStore) DB() *sql.DB {
 	return s.db
+}
+
+func (s *LocationStore) GetLocationsByBoundingBox(ctx context.Context, minLat, maxLat, minLon, maxLon float64) ([]Location, error) {
+	query := `
+		SELECT id, street, city, state, county, zip_code, country, country_code, latitude, longitude
+		FROM locations
+		WHERE latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, minLat, maxLat, minLon, maxLon)
+	if err != nil {
+		return nil, fmt.Errorf("getting locations: %w", err)
+	}
+	defer rows.Close()
+
+	var locations []Location
+	for rows.Next() {
+		var loc Location
+		if err := rows.Scan(
+			&loc.ID,
+			&loc.Street,
+			&loc.City,
+			&loc.State,
+			&loc.County,
+			&loc.ZIPCode,
+			&loc.Country,
+			&loc.CountryCode,
+			&loc.Latitude,
+			&loc.Longitude,
+		); err != nil {
+			return nil, fmt.Errorf("scanning location: %w", err)
+		}
+		locations = append(locations, loc)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterating over rows: %w", err)
+	}
+
+	return locations, nil
 }

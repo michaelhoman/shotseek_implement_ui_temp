@@ -54,6 +54,7 @@ type Storage struct {
 		Get(context.Context, int64) (Location, error)
 		GetByLocation(context.Context, *Location) (Location, error)
 		GetGeneralLocationByZip(ctx context.Context, zipCode string) (Location, error)
+		GetLocationsByBoundingBox(ctx context.Context, minLat, maxLat, minLon, maxLon float64) ([]Location, error)
 	}
 }
 
